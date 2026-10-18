@@ -321,11 +321,6 @@ mod tests {
 
     #[test]
     fn csv_uses_the_upstream_columns() {
-        use crate::aggregator::SearchResponse;
-        use crate::engine::EngineRegistry;
-        use crate::query::Query;
-        use crate::settings::Settings;
-        let registry = EngineRegistry::from_settings(&Settings::defaults()).unwrap();
         assert_eq!(CSV_COLUMNS, "title,url,content,host,engine,score,type");
     }
 
