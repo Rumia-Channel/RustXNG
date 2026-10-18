@@ -1,0 +1,227 @@
+{
+  "a": "http://127.0.0.1:8899",
+  "b": "http://127.0.0.1:8001",
+  "engines": {
+    "hackernews": {
+      "a": {
+        "n": 8,
+        "mean": 1.1,
+        "median": 0.8,
+        "p95": 3.2,
+        "max": 3.2
+      },
+      "b": {
+        "n": 8,
+        "mean": 863.3,
+        "median": 504.2,
+        "p95": 2192.5,
+        "max": 2192.5
+      },
+      "overlap_at_10": 1.0,
+      "top1_agreement": 1.0,
+      "found_a": 1.0,
+      "found_b": 1.0,
+      "errors": []
+    },
+    "github": {
+      "a": {
+        "n": 8,
+        "mean": 1.1,
+        "median": 1.0,
+        "p95": 2.2,
+        "max": 2.2
+      },
+      "b": {
+        "n": 8,
+        "mean": 1051.2,
+        "median": 979.5,
+        "p95": 1691.8,
+        "max": 1691.8
+      },
+      "overlap_at_10": 1.0,
+      "top1_agreement": 1.0,
+      "found_a": 1.0,
+      "found_b": 1.0,
+      "errors": []
+    },
+    "crates.io": {
+      "a": {
+        "n": 8,
+        "mean": 0.8,
+        "median": 0.8,
+        "p95": 0.8,
+        "max": 0.8
+      },
+      "b": {
+        "n": 8,
+        "mean": 604.1,
+        "median": 256.9,
+        "p95": 2315.5,
+        "max": 2315.5
+      },
+      "overlap_at_10": 1.0,
+      "top1_agreement": 1.0,
+      "found_a": 1.0,
+      "found_b": 1.0,
+      "errors": []
+    },
+    "npm": {
+      "a": {
+        "n": 8,
+        "mean": 0.8,
+        "median": 0.8,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "b": {
+        "n": 8,
+        "mean": 318.8,
+        "median": 284.1,
+        "p95": 451.4,
+        "max": 451.4
+      },
+      "overlap_at_10": 0.014,
+      "top1_agreement": 0.0,
+      "found_a": 1.0,
+      "found_b": 0.5,
+      "errors": []
+    },
+    "deezer": {
+      "a": {
+        "n": 8,
+        "mean": 0.7,
+        "median": 0.7,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "b": {
+        "n": 8,
+        "mean": 285.3,
+        "median": 273.8,
+        "p95": 328.8,
+        "max": 328.8
+      },
+      "overlap_at_10": 1.0,
+      "top1_agreement": 0.625,
+      "found_a": 0.625,
+      "found_b": 0.625,
+      "errors": []
+    },
+    "dailymotion": {
+      "a": {
+        "n": 8,
+        "mean": 0.7,
+        "median": 0.6,
+        "p95": 0.8,
+        "max": 0.8
+      },
+      "b": {
+        "n": 8,
+        "mean": 782.8,
+        "median": 668.3,
+        "p95": 1147.3,
+        "max": 1147.3
+      },
+      "overlap_at_10": 0.897,
+      "top1_agreement": 0.875,
+      "found_a": 1.0,
+      "found_b": 1.0,
+      "errors": []
+    },
+    "openstreetmap": {
+      "a": {
+        "n": 8,
+        "mean": 0.4,
+        "median": 0.4,
+        "p95": 0.6,
+        "max": 0.6
+      },
+      "b": {
+        "n": 8,
+        "mean": 114.0,
+        "median": 14.0,
+        "p95": 789.8,
+        "max": 789.8
+      },
+      "overlap_at_10": 1.0,
+      "top1_agreement": 0.125,
+      "found_a": 0.125,
+      "found_b": 0.125,
+      "errors": []
+    },
+    "photon": {
+      "a": {
+        "n": 8,
+        "mean": 0.7,
+        "median": 0.7,
+        "p95": 0.8,
+        "max": 0.8
+      },
+      "b": {
+        "n": 8,
+        "mean": 341.4,
+        "median": 315.6,
+        "p95": 530.1,
+        "max": 530.1
+      },
+      "overlap_at_10": 1.0,
+      "top1_agreement": 0.875,
+      "found_a": 0.875,
+      "found_b": 0.875,
+      "errors": []
+    },
+    "crossref": {
+      "a": {
+        "n": 8,
+        "mean": 0.3,
+        "median": 0.3,
+        "p95": 0.5,
+        "max": 0.5
+      },
+      "b": {
+        "n": 8,
+        "mean": 1.6,
+        "median": 1.6,
+        "p95": 2.2,
+        "max": 2.2
+      },
+      "overlap_at_10": 1.0,
+      "top1_agreement": 0.0,
+      "found_a": 0.0,
+      "found_b": 0.0,
+      "errors": []
+    },
+    "bing news": {
+      "a": {
+        "n": 8,
+        "mean": 0.6,
+        "median": 0.6,
+        "p95": 0.8,
+        "max": 0.8
+      },
+      "b": {
+        "n": 8,
+        "mean": 297.7,
+        "median": 101.5,
+        "p95": 1687.6,
+        "max": 1687.6
+      },
+      "overlap_at_10": 0.901,
+      "top1_agreement": 0.875,
+      "found_a": 0.875,
+      "found_b": 0.875,
+      "errors": []
+    }
+  },
+  "queries": [
+    "rust programming language",
+    "large language models",
+    "openstreetmap berlin",
+    "tokio async runtime",
+    "climate change arctic",
+    "nlp transformers",
+    "linux kernel scheduler",
+    "quantum computing"
+  ],
+  "repeats": 1
+}
