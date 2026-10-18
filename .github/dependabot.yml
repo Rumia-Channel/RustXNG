@@ -7,6 +7,11 @@ updates:
     groups:
       dependencies:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # major bumps of the HTTP/render stack need a migration, not a PR
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
