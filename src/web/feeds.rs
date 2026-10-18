@@ -326,8 +326,6 @@ mod tests {
         use crate::query::Query;
         use crate::settings::Settings;
         let registry = EngineRegistry::from_settings(&Settings::defaults()).unwrap();
-        let query = Query::parse("rust", &registry, &[]);
-        let response = SearchResponse::new(&query);
         assert_eq!(CSV_COLUMNS, "title,url,content,host,engine,score,type");
     }
 
