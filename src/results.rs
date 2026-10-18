@@ -76,7 +76,11 @@ pub struct SearchResult {
     pub category: String,
     #[serde(default, serialize_with = "serialize_template")]
     pub template: Template,
-    #[serde(default, skip_serializing_if = "is_medium", serialize_with = "serialize_priority")]
+    #[serde(
+        default,
+        skip_serializing_if = "is_medium",
+        serialize_with = "serialize_priority"
+    )]
     pub priority: Priority,
     #[serde(
         rename = "publishedDate",
@@ -94,7 +98,11 @@ pub struct SearchResult {
     ///
     /// Upstream serialises these as one `"key: value | key: value"` string in
     /// the JSON API, so we do the same.
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty", serialize_with = "serialize_metadata")]
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        serialize_with = "serialize_metadata"
+    )]
     pub metadata: BTreeMap<String, String>,
     /// A short URL shown in the UI.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -119,7 +127,10 @@ where
 }
 
 /// Upstream keeps the engine metadata as one human readable string.
-fn serialize_metadata<S>(metadata: &BTreeMap<String, String>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_metadata<S>(
+    metadata: &BTreeMap<String, String>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
@@ -141,7 +152,6 @@ where
         other => other.as_str(),
     })
 }
-
 
 impl SearchResult {
     pub fn new(url: impl Into<String>, title: impl Into<String>) -> Self {

@@ -5,5 +5,5 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Version string shown in the UI ("rustxng x.y.z").
 pub fn version_string() -> String {
-    format!("rustxng {VERSION}")
+    format!("RustXNG {VERSION}")
 }

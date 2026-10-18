@@ -252,7 +252,10 @@ async fn an_unreachable_engine_is_reported_as_unresponsive() {
     // Upstream shape: [[engine, "Translated error"], ...]
     let unresponsive = json["unresponsive_engines"].as_array().unwrap();
     assert_eq!(unresponsive[0][0], "mwmbl");
-    assert!(unresponsive[0][1].as_str().unwrap().contains("rror") || unresponsive[0][1].as_str().unwrap().contains("imeout"));
+    assert!(
+        unresponsive[0][1].as_str().unwrap().contains("rror")
+            || unresponsive[0][1].as_str().unwrap().contains("imeout")
+    );
 }
 
 #[tokio::test]
