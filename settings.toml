@@ -4,7 +4,7 @@
 
 [general]
 debug = false
-instance_name = "rustxng"
+instance_name = "RustXNG"
 contact_url = ""
 enable_metrics = true
 

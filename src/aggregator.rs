@@ -64,10 +64,14 @@ pub struct SearchResponse {
     pub search_query: String,
     pub number_of_results: u64,
     pub results: Vec<SearchResult>,
+    /// Upstream's JSON API emits an array of `{"answer": ...}` objects.
+    #[serde(serialize_with = "serialize_answers")]
     pub answers: Vec<String>,
     pub corrections: Vec<String>,
     pub infoboxes: Vec<Infobox>,
     pub suggestions: Vec<String>,
+    /// Upstream's JSON API emits `[engine, translated error]` pairs.
+    #[serde(serialize_with = "serialize_unresponsive")]
     pub unresponsive_engines: Vec<UnresponsiveEngine>,
     pub timings: Vec<Timing>,
     pub redirect_url: Option<String>,
@@ -363,6 +367,55 @@ impl Searcher {
     pub fn engine_snapshots(&self) -> Vec<EngineSnapshot> {
         self.states.snapshot()
     }
+}
+
+/// `[{"answer": "..."}]`, the shape upstream uses for answers.
+fn serialize_answers<S>(answers: &[String], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::Serialize;
+    #[derive(Serialize)]
+    struct Answer<'a> {
+        answer: &'a str,
+    }
+    answers
+        .iter()
+        .map(|answer| Answer { answer })
+        .collect::<Vec<_>>()
+        .serialize(serializer)
+}
+
+/// `[[engine, "Translated error"]]`, the shape upstream uses.
+fn serialize_unresponsive<S>(
+    engines: &[UnresponsiveEngine],
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::Serialize;
+    let mut pairs: Vec<(String, String)> = engines
+        .iter()
+        .map(|engine| {
+            let mut text = match engine.error_type.as_str() {
+                "timeout" => "Timeout".to_string(),
+                "access denied" => "Access denied".to_string(),
+                "captcha" => "CAPTCHA".to_string(),
+                "too many requests" => "Too many requests".to_string(),
+                "http error" => "HTTP error".to_string(),
+                "parsing error" => "Parsing error".to_string(),
+                "suspended" => "Suspended".to_string(),
+                _ => "Unexpected error".to_string(),
+            };
+            if engine.suspended && text != "Suspended" {
+                text = format!("Suspended: {text}");
+            }
+            (engine.engine.clone(), text)
+        })
+        .collect();
+    pairs.sort();
+    pairs.serialize(serializer)
 }
 
 fn failure_kind_from_error_type(error_type: &str) -> FailureKind {

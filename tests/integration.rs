@@ -249,8 +249,10 @@ async fn an_unreachable_engine_is_reported_as_unresponsive() {
     assert_eq!(status, StatusCode::OK);
     let json: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert!(json["results"].as_array().unwrap().is_empty());
+    // Upstream shape: [[engine, "Translated error"], ...]
     let unresponsive = json["unresponsive_engines"].as_array().unwrap();
-    assert_eq!(unresponsive[0]["engine"], "mwmbl");
+    assert_eq!(unresponsive[0][0], "mwmbl");
+    assert!(unresponsive[0][1].as_str().unwrap().contains("rror") || unresponsive[0][1].as_str().unwrap().contains("imeout"));
 }
 
 #[tokio::test]

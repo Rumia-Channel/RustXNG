@@ -328,7 +328,7 @@ pub fn units() -> &'static [Unit] {
 pub fn resolve(symbol: &str) -> Vec<&'static Unit> {
     let exact: Vec<&'static Unit> = UNITS
         .iter()
-        .filter(|unit| unit.symbols.iter().any(|candidate| *candidate == symbol))
+        .filter(|unit| unit.symbols.contains(&symbol))
         .collect();
     if !exact.is_empty() {
         return exact;

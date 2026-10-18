@@ -4,7 +4,7 @@ rustxng への関心ありがとうございます。バグ報告・機能提案
 
 ## はじめる前に
 
-1. 既存の [Issue](https://github.com/sahenjp/rustxng/issues) と [docs/PORTING.md](docs/PORTING.md) を確認してください（移植方針と未対応範囲が書かれています）
+1. 既存の [Issue](https://github.com/sahenjp/RustXNG/issues) と [docs/PORTING.md](docs/PORTING.md) を確認してください（移植方針と未対応範囲が書かれています）
 2. 大きな変更は、先に Issue で方針を相談してください
 3. 脆弱性を見つけた場合は Issue ではなく [SECURITY.md](SECURITY.md) の手順で報告してください
 
@@ -14,7 +14,7 @@ rustxng への関心ありがとうございます。バグ報告・機能提案
 - 追加のシステム依存はありません
 
 ```bash
-git clone https://github.com/sahenjp/rustxng.git
+git clone https://github.com/sahenjp/RustXNG.git
 cd rustxng
 cargo test
 ```

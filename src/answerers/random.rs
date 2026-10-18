@@ -232,10 +232,7 @@ mod tests {
         let mut rng = Rng::with_seed(1234);
         let number: i64 = random_value("int", &[], &mut rng).unwrap().parse().unwrap();
         assert!((-2i64.pow(31)..=2i64.pow(31)).contains(&number));
-        assert_eq!(
-            random_value("number", &[], &mut rng).unwrap().len() > 0,
-            true
-        );
+        assert!(!random_value("number", &[], &mut rng).unwrap().is_empty());
         let float: f64 = random_value("float", &[], &mut rng)
             .unwrap()
             .parse()

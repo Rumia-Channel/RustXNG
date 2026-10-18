@@ -265,14 +265,16 @@ async fn main() -> ExitCode {
                 unresponsive: body["unresponsive_engines"]
                     .as_array()
                     .map(|engines| {
+                        // upstream shape: [[engine, "Translated error"], ...]
                         engines
                             .iter()
-                            .map(|engine| {
-                                format!(
+                            .filter_map(|entry| {
+                                let pair = entry.as_array()?;
+                                Some(format!(
                                     "{}:{}",
-                                    engine["engine"].as_str().unwrap_or_default(),
-                                    engine["error_type"].as_str().unwrap_or_default()
-                                )
+                                    pair.first()?.as_str().unwrap_or_default(),
+                                    pair.get(1)?.as_str().unwrap_or_default()
+                                ))
                             })
                             .collect()
                     })

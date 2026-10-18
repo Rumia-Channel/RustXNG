@@ -223,7 +223,7 @@ mod tests {
         assert_eq!(PROXY_PATH, "/favicon_proxy");
         assert_eq!(CACHE_MAX_AGE, 604_800);
         assert_eq!(CANDIDATE_PATHS, &["/favicon.ico", "/favicon.png"]);
-        assert!(MAX_SIZE >= 64 * 1024);
+        const { assert!(MAX_SIZE >= 64 * 1024) };
     }
 
     #[tokio::test]

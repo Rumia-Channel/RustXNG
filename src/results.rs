@@ -74,9 +74,9 @@ pub struct SearchResult {
     pub score: f64,
     #[serde(default)]
     pub category: String,
-    #[serde(default)]
+    #[serde(default, serialize_with = "serialize_template")]
     pub template: Template,
-    #[serde(default, skip_serializing_if = "is_medium")]
+    #[serde(default, skip_serializing_if = "is_medium", serialize_with = "serialize_priority")]
     pub priority: Priority,
     #[serde(
         rename = "publishedDate",
@@ -91,7 +91,10 @@ pub struct SearchResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub img_src: Option<String>,
     /// Engine specific extra fields (length, views, licence, ...).
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    ///
+    /// Upstream serialises these as one `"key: value | key: value"` string in
+    /// the JSON API, so we do the same.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty", serialize_with = "serialize_metadata")]
     pub metadata: BTreeMap<String, String>,
     /// A short URL shown in the UI.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -106,6 +109,39 @@ pub struct SearchResult {
 fn is_medium(priority: &Priority) -> bool {
     *priority == Priority::Medium
 }
+
+/// Upstream renders `default.html`, `images.html`, ... in its JSON API.
+fn serialize_template<S>(template: &Template, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(&format!("{}.html", template.as_str()))
+}
+
+/// Upstream keeps the engine metadata as one human readable string.
+fn serialize_metadata<S>(metadata: &BTreeMap<String, String>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let text = metadata
+        .iter()
+        .map(|(key, value)| format!("{key}: {value}"))
+        .collect::<Vec<_>>()
+        .join(" | ");
+    serializer.serialize_str(&text)
+}
+
+/// Upstream uses an empty string for the default priority.
+fn serialize_priority<S>(priority: &Priority, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(match priority {
+        Priority::Medium => "",
+        other => other.as_str(),
+    })
+}
+
 
 impl SearchResult {
     pub fn new(url: impl Into<String>, title: impl Into<String>) -> Self {

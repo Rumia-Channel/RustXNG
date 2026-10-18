@@ -8,7 +8,7 @@
 
 **公開 Issue を作らないでください。** 次のいずれかで非公開に報告してください。
 
-1. GitHub の [Security Advisories](https://github.com/sahenjp/rustxng/security/advisories/new)（推奨）
+1. GitHub の [Security Advisories](https://github.com/sahenjp/RustXNG/security/advisories/new)（推奨）
 2. リポジトリのメンテナへの直接連絡
 
 報告に含めてほしい情報:
