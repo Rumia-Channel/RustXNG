@@ -83,7 +83,7 @@ async fn json_search_returns_merged_results() {
     let base_url = start_fake_engine().await;
     let app = app(settings_for(&base_url));
 
-    let (status, body, headers) = get_uri(&app, "/search?q=rust&format=json").await;
+    let (status, body, headers) = get_uri(&app, "/search?q=rust&format=json&full=1").await;
     assert_eq!(status, StatusCode::OK);
     assert!(
         headers
@@ -139,7 +139,7 @@ async fn csv_and_rss_formats_are_served() {
             .unwrap()
             .starts_with("application/csv")
     );
-    assert!(body.starts_with("title,url,content,engine"));
+    assert!(body.starts_with("title,url,content,host,engine,score,type"));
     assert!(body.contains("The Rust Programming Language"));
 
     let (status, body, headers) = get_uri(&app, "/search?q=rust&format=rss").await;
@@ -245,7 +245,7 @@ async fn preferences_are_stored_in_cookies() {
 async fn an_unreachable_engine_is_reported_as_unresponsive() {
     // Port 9 is the discard service: nothing is listening there.
     let app = app(settings_for("http://127.0.0.1:9/api/v1"));
-    let (status, body, _) = get_uri(&app, "/search?q=rust&format=json").await;
+    let (status, body, _) = get_uri(&app, "/search?q=rust&format=json&full=1").await;
     assert_eq!(status, StatusCode::OK);
     let json: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert!(json["results"].as_array().unwrap().is_empty());
@@ -263,13 +263,13 @@ async fn bangs_select_engines_and_languages() {
     let base_url = start_fake_engine().await;
     let app = app(settings_for(&base_url));
 
-    let (status, body, _) = get_uri(&app, "/search?q=%21mwmbl+rust&format=json").await;
+    let (status, body, _) = get_uri(&app, "/search?q=%21mwmbl+rust&format=json&full=1").await;
     assert_eq!(status, StatusCode::OK);
     let json: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(json["results"].as_array().unwrap().len(), 2);
 
     // An unknown bang is not a bang: it stays part of the search terms.
-    let (status, body, _) = get_uri(&app, "/search?q=%21nosuch+rust&format=json").await;
+    let (status, body, _) = get_uri(&app, "/search?q=%21nosuch+rust&format=json&full=1").await;
     assert_eq!(status, StatusCode::OK);
     let json: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(json["search_query"], "!nosuch rust");
@@ -286,7 +286,7 @@ fn the_default_settings_build_every_engine() {
 async fn metrics_endpoint_exposes_engine_counters() {
     let base_url = start_fake_engine().await;
     let app = app(settings_for(&base_url));
-    get_uri(&app, "/search?q=rust&format=json").await;
+    get_uri(&app, "/search?q=rust&format=json&full=1").await;
 
     let (status, body, headers) = get_uri(&app, "/metrics").await;
     assert_eq!(status, StatusCode::OK);
@@ -369,7 +369,7 @@ async fn the_rate_limiter_answers_429_after_the_limit() {
 
     let mut statuses = Vec::new();
     for _ in 0..3 {
-        let (status, _, _) = get_uri(&app, "/search?q=rust&format=json").await;
+        let (status, _, _) = get_uri(&app, "/search?q=rust&format=json&full=1").await;
         statuses.push(status);
     }
     assert_eq!(

@@ -32,6 +32,25 @@ curl 'http://127.0.0.1:8888/search?q=%21wikipedia+rust&format=json'      # !wiki
 
 設定は [settings.toml](settings.toml) が既定です。`--config` で差分だけ上書きでき、`SEARXNG_*` 環境変数も受け付けます。詳しくは [docs/PORTING.md](docs/PORTING.md#設定) を参照してください。
 
+## 速度
+
+同一マシンで上流 SearXNG と比較した実測値です（再現手順: [docs/BENCHMARK.md](docs/BENCHMARK.md)）。
+
+| 指標 | SearXNG | RustXNG | 倍率 |
+| :--- | ---: | ---: | ---: |
+| 起動（`/healthz` が 200 まで） | 0.722 秒 | **0.028 秒** | 約 26 倍高速 |
+| 常駐メモリ（RSS） | 118 MiB | **13 MiB** | 約 9 倍小さい |
+| エンジン別コールド検索 | 基準 | 0.74〜1.22 | ほぼ同等 |
+| 反復クエリ（キャッシュ） | 100〜1000 ms | **1 ms 級** | 100〜1000 倍高速 |
+| 結果一致度（overlap@10） | 基準 | 10 エンジン中 6 エンジンが 1.00 | — |
+
+自分の環境で測る場合:
+
+```bash
+cargo run --release --example benchmark      # レイテンシとキャッシュ効果
+cargo run --release --example benchmark -- --json | jq .   # 詳細を JSON で
+```
+
 ## ドキュメント
 
 | ドキュメント | 内容 |

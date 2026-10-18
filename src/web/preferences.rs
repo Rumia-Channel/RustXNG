@@ -6,7 +6,7 @@
 use crate::settings::Settings;
 
 /// Cookie name of a preference (upstream `searx/preferences.py`).
-pub const COOKIE_CATEGORIES: &str = "categories";
+pub const COOKIE_CATEGORIES: &str = "category";
 pub const COOKIE_DISABLED_ENGINES: &str = "disabled_engines";
 pub const COOKIE_ENABLED_PLUGINS: &str = "enabled_plugins";
 pub const COOKIE_DISABLED_PLUGINS: &str = "disabled_plugins";
@@ -75,7 +75,8 @@ impl Preferences {
             let name = parts.next().unwrap_or_default().trim();
             let value = decode(parts.next().unwrap_or_default().trim());
             match name {
-                COOKIE_CATEGORIES => preferences.categories = split_list(&value),
+                // upstream calls the cookie "category"; accept the old name too
+                COOKIE_CATEGORIES | "categories" => preferences.categories = split_list(&value),
                 COOKIE_DISABLED_ENGINES => preferences.disabled_engines = split_list(&value),
                 COOKIE_ENABLED_PLUGINS => preferences.enabled_plugins = split_list(&value),
                 COOKIE_DISABLED_PLUGINS => preferences.disabled_plugins = split_list(&value),

@@ -343,7 +343,61 @@ impl EngineConfig {
     }
 }
 
+/// Convert a YAML value into a TOML value (mappings become tables).
+fn yaml_to_toml(value: &serde_yaml::Value) -> Option<toml::Value> {
+    Some(match value {
+        serde_yaml::Value::Null => return None,
+        serde_yaml::Value::Bool(flag) => toml::Value::Boolean(*flag),
+        serde_yaml::Value::Number(number) => {
+            if let Some(integer) = number.as_i64() {
+                toml::Value::Integer(integer)
+            } else {
+                toml::Value::Float(number.as_f64()?)
+            }
+        }
+        serde_yaml::Value::String(text) => toml::Value::String(text.clone()),
+        serde_yaml::Value::Sequence(items) => {
+            toml::Value::Array(items.iter().filter_map(yaml_to_toml).collect())
+        }
+        serde_yaml::Value::Mapping(mapping) => {
+            let mut table = toml::Table::new();
+            for (key, value) in mapping {
+                if let Some(key) = yaml_key(key) {
+                    if let Some(value) = yaml_to_toml(value) {
+                        table.insert(key, value);
+                    }
+                }
+            }
+            toml::Value::Table(table)
+        }
+        serde_yaml::Value::Tagged(tagged) => return yaml_to_toml(&tagged.value),
+    })
+}
+
+fn yaml_key(value: &serde_yaml::Value) -> Option<String> {
+    match value {
+        serde_yaml::Value::String(text) => Some(text.clone()),
+        serde_yaml::Value::Bool(flag) => Some(flag.to_string()),
+        serde_yaml::Value::Number(number) => Some(number.to_string()),
+        _ => None,
+    }
+}
+
 impl Settings {
+    /// Parse a SearXNG `settings.yml` (YAML) document into settings.
+    ///
+    /// Upstream's configuration format is YAML, so a drop-in `settings.yml` is
+    /// converted to the internal representation: the document is turned into TOML
+    /// values first (the internal merge logic works on those).
+    pub fn from_yaml_str(text: &str) -> Result<Settings, SettingsError> {
+        let yaml: serde_yaml::Value = serde_yaml::from_str(text)
+            .map_err(|error| SettingsError::Validation(error.to_string()))?;
+        let Some(value) = yaml_to_toml(&yaml) else {
+            return Err(SettingsError::Validation("empty YAML document".into()));
+        };
+        value.try_into().map_err(SettingsError::Parse)
+    }
+
     /// The built-in defaults (no user file involved).
     pub fn defaults() -> Settings {
         toml::from_str(DEFAULT_SETTINGS).expect("built-in settings.toml must be valid")
@@ -358,7 +412,16 @@ impl Settings {
                     path: path.to_path_buf(),
                     source,
                 })?;
-                let user: Settings = toml::from_str(&raw)?;
+                // Upstream configurations are YAML; TOML is also accepted.
+                let is_yaml = matches!(
+                    path.extension().and_then(|extension| extension.to_str()),
+                    Some("yml" | "yaml")
+                );
+                let user = if is_yaml {
+                    Settings::from_yaml_str(&raw)?
+                } else {
+                    toml::from_str::<Settings>(&raw)?
+                };
                 Self::merge(Settings::defaults(), user)?
             }
             None => Settings::defaults(),
@@ -641,6 +704,30 @@ mod tests {
         settings.validate().expect("defaults must validate");
         assert!(!settings.engines.is_empty());
         assert_eq!(settings.server.port, 8888);
+    }
+
+    #[test]
+    fn upstream_yaml_settings_are_accepted() {
+        let yaml = r#"
+use_default_settings: true
+search:
+  safe_search: 2
+  default_lang: "ja"
+server:
+  port: 8880
+engines:
+  - name: "wikipedia (ja)"
+    engine: wikipedia
+    shortcut: wja
+    categories: ["general"]
+    base_url: "https://ja.wikipedia.org"
+"#;
+        let user = Settings::from_yaml_str(yaml).expect("valid yaml");
+        let merged = Settings::merge(Settings::defaults(), user).expect("merge");
+        assert_eq!(merged.server.port, 8880);
+        assert_eq!(merged.search.safe_search, 2);
+        assert_eq!(merged.search.default_lang, "ja");
+        assert!(merged.engine("wikipedia (ja)").is_some());
     }
 
     #[test]

@@ -40,6 +40,8 @@ pub struct SearchParams {
     pub enabled_plugins: Option<String>,
     pub disabled_plugins: Option<String>,
     pub image_proxy: Option<String>,
+    /// \`full=1\` returns the rich JSON with timings and counters.
+    pub full: Option<String>,
 }
 
 /// Parameters of `/autocompleter`.
@@ -217,7 +219,18 @@ async fn run_search(state: AppState, params: SearchParams, headers: HeaderMap) -
     }
 
     match format.as_str() {
-        "json" => axum::Json(&response).into_response(),
+        "json" => {
+            let full = params
+                .full
+                .as_deref()
+                .map(|value| matches!(value, "1" | "true" | "on" | "yes"))
+                .unwrap_or(false);
+            if full {
+                axum::Json(super::feeds::json_response_full(&response)).into_response()
+            } else {
+                axum::Json(super::feeds::upstream_json(&response)).into_response()
+            }
+        }
         "csv" => super::feeds::csv_response(&response),
         "rss" => super::feeds::rss_response(&state, &response, &raw_query),
         _ => results_page(
@@ -427,27 +440,83 @@ pub async fn autocompleter(
 /// `GET /config`.
 pub async fn config(State(state): State<AppState>) -> Response {
     let settings = state.settings();
-    let engines: Vec<super::EngineView> = engine_views(&state.searcher);
+    let engines: Vec<serde_json::Value> = state
+        .searcher
+        .registry
+        .iter()
+        .map(|engine| {
+            serde_json::json!({
+                "name": engine.name(),
+                "categories": engine.categories(),
+                "shortcut": engine.shortcut(),
+                "enabled": true,
+                "paging": engine.paging(),
+                "language_support": engine.language_support(),
+                // the engine trait does not track per engine languages/regions
+                "languages": [],
+                "regions": [],
+                "safesearch": engine.safesearch_support(),
+                "time_range_support": engine.time_range_support(),
+                "timeout": engine.timeout().as_secs_f64(),
+            })
+        })
+        .collect();
+    let plugins: Vec<serde_json::Value> = state
+        .searcher
+        .plugins
+        .infos()
+        .into_iter()
+        .map(|plugin| {
+            let enabled = state.searcher.plugins.is_enabled(
+                &plugin.id,
+                &settings.plugins.enabled,
+                &settings.plugins.disabled,
+            );
+            serde_json::json!({ "name": plugin.id, "enabled": enabled })
+        })
+        .collect();
+    let locales: serde_json::Map<String, serde_json::Value> = crate::locales::LOCALES
+        .iter()
+        .map(|locale| {
+            let label = if locale.country.is_empty() {
+                format!("{} ({})", locale.native, locale.english)
+            } else {
+                format!("{} ({}, {})", locale.native, locale.english, locale.country)
+            };
+            (locale.id.to_string(), serde_json::Value::String(label))
+        })
+        .collect();
+    let brand = serde_json::json!({
+        "CONTACT_URL": settings.general.contact_url.clone(),
+        "DOCS_URL": "https://github.com/sahenjp/RustXNG/tree/main/docs",
+        "GIT_URL": "https://github.com/sahenjp/RustXNG",
+        "GIT_BRANCH": "main",
+        "ISSUE_URL": "https://github.com/sahenjp/RustXNG/issues",
+        "NEW_ISSUE_URL": "https://github.com/sahenjp/RustXNG/issues/new/choose",
+        "PRIVACYPOLICY_URL": settings.general.privacypolicy_url.clone(),
+        "DONATION_URL": settings.general.donation_url.clone(),
+    });
+    // upstream's /config is the contract used by clients; keep the field set
     let body = serde_json::json!({
-        "version": VERSION,
+        "version": crate::version::version_string(),
         "instance_name": settings.general.instance_name,
-        "engines": engines,
         "categories": state.searcher.registry.categories(),
-        "plugins": state.searcher.plugins.infos(),
-        "locales": crate::locales::LOCALE_TAGS,
-        "languages": settings.search.languages,
-        "safe_search": settings.search.safe_search,
-        "default_theme": settings.ui.default_theme,
+        "engines": engines,
+        "plugins": plugins,
+        "locales": locales,
         "default_locale": settings.ui.default_locale,
         "autocomplete": settings.search.autocomplete,
-        "formats": settings.search.formats,
-        "max_page": settings.search.max_page,
-        "timeout_limit": settings.search.timeout_limit,
+        "safe_search": settings.search.safe_search,
+        "default_theme": settings.ui.default_theme,
+        "brand": brand,
+        "limiter": { "enabled": settings.server.limiter },
+        "doi_resolvers": [],
+        "default_doi_resolver": "",
+        "public_instance": settings.general.public_instance,
     });
     axum::Json(body).into_response()
 }
 
-/// `GET /preferences`.
 pub async fn preferences_get(State(state): State<AppState>, headers: HeaderMap) -> Response {
     let settings = state.settings();
     let preferences = preferences_of(&headers, &state);

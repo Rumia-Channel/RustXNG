@@ -9,21 +9,164 @@ use crate::aggregator::SearchResponse;
 use crate::engine::util::encode;
 
 /// `format=csv`: one row per result, like upstream's `write_csv_response`.
+/// The exact JSON document of upstream's `get_json_response`.
+///
+/// Only upstream's fields are emitted, which is what a SearXNG client expects.
+/// The richer response (timings, counters, engine data) is served with
+/// `format=json&full=1` through [`json_response_full`].
+pub fn upstream_json(response: &SearchResponse) -> serde_json::Value {
+    let results: Vec<serde_json::Value> = response
+        .results
+        .iter()
+        .map(|result| {
+            serde_json::json!({
+                "url": result.url,
+                "template": format!("{}.html", result.template.as_str()),
+                "engine": result.engine,
+                "engines": result.engines,
+                "positions": result.positions,
+                "score": result.score,
+                "category": result.category,
+                "title": result.title,
+                "content": result.content,
+                "img_src": result.img_src.clone().unwrap_or_default(),
+                "thumbnail": result.thumbnail.clone().unwrap_or_default(),
+                "author": result.author.clone().unwrap_or_default(),
+                "publishedDate": result.published_date,
+                "priority": match result.priority {
+                    crate::results::Priority::Medium => "",
+                    other => other.as_str(),
+                },
+                "metadata": result
+                    .metadata
+                    .iter()
+                    .map(|(key, value)| format!("{key}: {value}"))
+                    .collect::<Vec<_>>()
+                    .join(" | "),
+            })
+        })
+        .collect();
+    let answers: Vec<serde_json::Value> = response
+        .answers
+        .iter()
+        .map(|answer| serde_json::json!({ "answer": answer }))
+        .collect();
+    let mut unresponsive: Vec<(String, String)> = response
+        .unresponsive_engines
+        .iter()
+        .map(|engine| {
+            let mut text = match engine.error_type.as_str() {
+                "timeout" => "Timeout",
+                "access denied" => "Access denied",
+                "captcha" => "CAPTCHA",
+                "too many requests" => "Too many requests",
+                "http error" => "HTTP error",
+                "parsing error" => "Parsing error",
+                _ => "Unexpected error",
+            }
+            .to_string();
+            if engine.suspended {
+                text = format!("Suspended: {text}");
+            }
+            (engine.engine.clone(), text)
+        })
+        .collect();
+    unresponsive.sort();
+
+    serde_json::json!({
+        "query": response.query,
+        "results": results,
+        "answers": answers,
+        "corrections": response.corrections,
+        "infoboxes": response.infoboxes,
+        "suggestions": response.suggestions,
+        "unresponsive_engines": unresponsive,
+    })
+}
+
+/// The rich JSON response (upstream fields plus rustxng extras) for
+/// `format=json&full=1`.
+pub fn json_response_full(response: &SearchResponse) -> serde_json::Value {
+    let mut value = upstream_json(response);
+    if let Some(object) = value.as_object_mut() {
+        object.insert("search_query".into(), response.search_query.clone().into());
+        object.insert(
+            "number_of_results".into(),
+            response.number_of_results.into(),
+        );
+        object.insert("pageno".into(), response.pageno.into());
+        object.insert("paging".into(), response.paging.into());
+        object.insert("engines".into(), serde_json::json!(response.engines));
+        object.insert("timings".into(), serde_json::json!(response.timings));
+        object.insert(
+            "engine_data".into(),
+            serde_json::json!(response.engine_data),
+        );
+        object.insert(
+            "redirect_url".into(),
+            response
+                .redirect_url
+                .clone()
+                .map(Into::into)
+                .unwrap_or(serde_json::Value::Null),
+        );
+        object.insert(
+            "error".into(),
+            response
+                .error
+                .clone()
+                .map(Into::into)
+                .unwrap_or(serde_json::Value::Null),
+        );
+    }
+    value
+}
+
+/// The host of a result URL (upstream's `parsed_url.netloc`).
+fn host_of(url: &str) -> String {
+    url::Url::parse(url)
+        .ok()
+        .and_then(|parsed| parsed.host_str().map(str::to_string))
+        .unwrap_or_default()
+}
+
+/// `format=csv`: upstream's `write_csv_response` columns and row types.
+/// The column names of upstream's \`write_csv_response\`.
+pub const CSV_COLUMNS: &str = "title,url,content,host,engine,score,type";
+
+/// \`format=csv\`: upstream's \`write_csv_response\` columns and row types.
 pub fn csv_response(response: &SearchResponse) -> Response {
-    let mut body =
-        String::from("title,url,content,engine,engines,score,category,template,publishedDate\n");
+    let mut body = format!("{CSV_COLUMNS}\n");
     for result in &response.results {
         body.push_str(&format!(
-            "{},{},{},{},{},{:.2},{},{},{}\n",
+            "{},{},{},{},{},{:.6},result\n",
             csv_field(&result.title),
             csv_field(&result.url),
             csv_field(&result.content),
+            csv_field(&host_of(&result.url)),
             csv_field(&result.engine),
-            csv_field(&result.engines.join(", ")),
             result.score,
-            csv_field(&result.category),
-            csv_field(result.template.as_str()),
-            csv_field(result.published_date.as_deref().unwrap_or_default()),
+        ));
+    }
+    for answer in &response.answers {
+        body.push_str(&format!(
+            "{},,,,{},0.000000,answer\n",
+            csv_field(answer),
+            csv_field("")
+        ));
+    }
+    for suggestion in &response.suggestions {
+        body.push_str(&format!(
+            "{},,,,{},0.000000,suggestion\n",
+            csv_field(suggestion),
+            csv_field("")
+        ));
+    }
+    for correction in &response.corrections {
+        body.push_str(&format!(
+            "{},,,,{},0.000000,correction\n",
+            csv_field(correction),
+            csv_field("")
         ));
     }
     let disposition = format!(
@@ -130,6 +273,63 @@ pub fn escape(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_upstream_json_has_only_upstream_fields() {
+        use crate::aggregator::SearchResponse;
+        use crate::engine::EngineRegistry;
+        use crate::query::Query;
+        use crate::settings::Settings;
+        let registry = EngineRegistry::from_settings(&Settings::defaults()).unwrap();
+        let query = Query::parse("rust", &registry, &[]);
+        let mut response = SearchResponse::new(&query);
+        response.results.push(crate::results::SearchResult::new(
+            "https://example.com/a",
+            "A",
+        ));
+        let value = upstream_json(&response);
+        let mut keys: Vec<&String> = value.as_object().unwrap().keys().collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            vec![
+                "answers",
+                "corrections",
+                "infoboxes",
+                "query",
+                "results",
+                "suggestions",
+                "unresponsive_engines"
+            ]
+        );
+        assert_eq!(value["results"][0]["template"], "default.html");
+    }
+
+    #[test]
+    fn the_full_json_adds_the_counters() {
+        use crate::aggregator::SearchResponse;
+        use crate::engine::EngineRegistry;
+        use crate::query::Query;
+        use crate::settings::Settings;
+        let registry = EngineRegistry::from_settings(&Settings::defaults()).unwrap();
+        let query = Query::parse("rust", &registry, &[]);
+        let response = SearchResponse::new(&query);
+        let value = json_response_full(&response);
+        assert!(value.get("timings").is_some());
+        assert!(value.get("number_of_results").is_some());
+    }
+
+    #[test]
+    fn csv_uses_the_upstream_columns() {
+        use crate::aggregator::SearchResponse;
+        use crate::engine::EngineRegistry;
+        use crate::query::Query;
+        use crate::settings::Settings;
+        let registry = EngineRegistry::from_settings(&Settings::defaults()).unwrap();
+        let query = Query::parse("rust", &registry, &[]);
+        let response = SearchResponse::new(&query);
+        assert_eq!(CSV_COLUMNS, "title,url,content,host,engine,score,type");
+    }
 
     #[test]
     fn csv_fields_are_quoted() {
