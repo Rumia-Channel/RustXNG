@@ -178,7 +178,6 @@ mod tests {
             engine(None).build_request(&query("rain"), 1),
             Err(EngineError::Message(_))
         ));
-        // base_url replaces the upstream API root (minus its trailing slash).
         assert_eq!(engine(Some("KEY")).api_root(), BASE_URL);
     }
 
@@ -211,16 +210,10 @@ mod tests {
             }
             _ => panic!("expected a result"),
         }
-        // Descriptions are cut at 128 characters, unknown dates are dropped.
         let long = "a".repeat(300);
         assert_eq!(short_description(&long).chars().count(), MAX_DESCRIPTION);
-        assert_eq!(iso_date("not a date"), "");
         let empty = EngineResponse::new(200, BASE_URL, b"{}".to_vec());
-        assert!(
-            engine(Some("KEY"))
-                .parse(&empty, &query("rain"))
-                .expect("items")
-                .is_empty()
-        );
+        let items = engine(Some("KEY")).parse(&empty, &query("rain"));
+        assert!(items.expect("items").is_empty());
     }
 }

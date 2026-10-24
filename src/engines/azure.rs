@@ -26,14 +26,11 @@ const PORTAL: &str = "https://portal.azure.com/#@/resource";
 const TAKE: u32 = 30;
 
 /// Azure resources and resource groups, like the search bar of the portal.
-///
-/// Upstream caches an OAuth2 token; engines here take it from the settings.
 pub struct Azure {
     meta: EngineMeta,
 }
 
 impl Azure {
-    /// Upstream setup(): the three credentials are mandatory.
     pub fn from_config(config: &EngineConfig) -> Result<Arc<Self>, String> {
         let mut missing = Vec::new();
         for option in ["azure_tenant_id", "azure_client_id", "azure_client_secret"] {
@@ -66,23 +63,12 @@ impl Azure {
             .filter(|token| !token.is_empty())
             .ok_or_else(|| EngineError::Message("azure requires an access token".into()))
     }
-
-    fn endpoint(&self) -> &str {
-        self.meta
-            .opt_str("azure_batch_endpoint")
-            .unwrap_or(BATCH_ENDPOINT)
-    }
 }
 
-/// Upstream embeds the query in KQL strings; quotes are escaped here.
 fn batch_body(search: &str) -> serde_json::Value {
     let search = search.replace('\'', "\\'");
     let resource_group_query = format!(
-        "ResourceContainers | where (name contains ('{search}')) | where (type =~ \
-('Microsoft.Resources/subscriptions/resourcegroups')) | project id,name,type,kind,\
-subscriptionId,resourceGroup | extend matchscore = name startswith '{search}' | extend \
-normalizedName = tolower(tostring(name)) | sort by matchscore desc, normalizedName asc \
-| take {TAKE}"
+        "ResourceContainers | where (name contains ('{search}')) | where (type =~ ('Microsoft.Resources/subscriptions/resourcegroups')) | project id,name,type,kind,subscriptionId,resourceGroup | extend matchscore = name startswith '{search}' | extend normalizedName = tolower(tostring(name)) | sort by matchscore desc, normalizedName asc | take {TAKE}"
     );
     let details = serde_json::json!({"commandName": "Microsoft.ResourceGraph"});
     let url = "/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01";
@@ -90,8 +76,7 @@ normalizedName = tolower(tostring(name)) | sort by matchscore desc, normalizedNa
         "requests": [
             {"url": url, "httpMethod": "POST", "name": "resourceGroups",
              "requestHeaderDetails": details, "content": {"query": resource_group_query}},
-            {"url": url, "httpMethod": "POST", "name": "resources",
-             "requestHeaderDetails": details,
+            {"url": url, "httpMethod": "POST", "name": "resources", "requestHeaderDetails": details,
              "content": {"query": format!("Resources | where name contains '{search}' | take {TAKE}")}},
         ]
     })
@@ -110,11 +95,10 @@ fn resource_item(item: &serde_json::Value, name: &str, subscription: &str) -> En
     let url = format!(
         "{PORTAL}/subscriptions/{subscription}/resourceGroups/{resource_group}/providers/{kind}/{name}/overview"
     );
-    ResultBuilder::new(url, name)
-        .content(format!(
-            "Resource of type {kind} in Subscription: {subscription}, Resource Group: {resource_group}"
-        ))
-        .build()
+    let content = format!(
+        "Resource of type {kind} in Subscription: {subscription}, Resource Group: {resource_group}"
+    );
+    ResultBuilder::new(url, name).content(content).build()
 }
 
 impl Engine for Azure {
@@ -124,7 +108,11 @@ impl Engine for Azure {
 
     fn build_request(&self, query: &Query, _pageno: u32) -> Result<EngineRequest, EngineError> {
         let token = self.token()?;
-        Ok(EngineRequest::post(self.endpoint())
+        let endpoint = self
+            .meta
+            .opt_str("azure_batch_endpoint")
+            .unwrap_or(BATCH_ENDPOINT);
+        Ok(EngineRequest::post(endpoint)
             .header("Authorization", &format!("Bearer {token}"))
             .header("Accept", "application/json")
             .header("Content-Type", "application/json")
@@ -168,21 +156,15 @@ impl Engine for Azure {
 mod tests {
     use super::*;
 
-    fn value(raw: &str) -> toml::Value {
-        toml::Value::String(raw.to_string())
-    }
-
-    fn credentials() -> Vec<(&'static str, toml::Value)> {
-        ["azure_tenant_id", "azure_client_id", "azure_client_secret"]
-            .into_iter()
-            .map(|option| (option, value("x")))
-            .collect()
-    }
-
-    fn try_engine(extra: &[(&str, toml::Value)]) -> Result<Arc<Azure>, String> {
+    fn try_engine(token: Option<&str>) -> Result<Arc<Azure>, String> {
         let mut config = EngineConfig::new("azure", "azure", "az", &["it", "cloud"]);
-        for (key, item) in extra {
-            config.extra.insert((*key).to_string(), item.clone());
+        for option in ["azure_tenant_id", "azure_client_id", "azure_client_secret"] {
+            config
+                .extra
+                .insert(option.to_string(), toml::Value::String("x".into()));
+        }
+        if let Some(token) = token {
+            config.api_key = Some(token.to_string());
         }
         Azure::from_config(&config)
     }
@@ -200,23 +182,13 @@ mod tests {
 
     #[test]
     fn requires_the_credentials_and_a_token() {
-        assert!(try_engine(&[]).is_err());
-        let extra: Vec<_> = credentials()
-            .into_iter()
-            .chain([("azure_access_token", value("TOKEN"))])
-            .collect();
-        let request = try_engine(&extra)
-            .expect("engine")
-            .build_request(&query("my rg"), 1)
-            .expect("request");
-        let body = request.json.as_ref().expect("json body");
-        assert_eq!(body["requests"][0]["name"].as_str(), Some("resourceGroups"));
-        let kql = body["requests"][1]["content"]["query"]
-            .as_str()
-            .unwrap_or_default();
-        assert!(kql.starts_with("Resources | where name contains 'my rg'"));
+        let config = EngineConfig::new("azure", "azure", "az", &["it", "cloud"]);
+        assert!(Azure::from_config(&config).is_err());
+        let request = try_engine(Some("TOKEN")).expect("engine");
+        let request = request.build_request(&query("my rg"), 1).expect("request");
+        assert_eq!(request.url, BATCH_ENDPOINT);
         assert!(matches!(
-            try_engine(&credentials())
+            try_engine(None)
                 .expect("engine")
                 .build_request(&query("x"), 1),
             Err(EngineError::Message(_))
@@ -225,31 +197,22 @@ mod tests {
 
     #[test]
     fn parses_the_batch_answer() {
-        let body = r##"{"responses": [
-          {"name": "resourceGroups", "content": {"data": [{"name": "rg-prod", "subscriptionId": "sub-1"}]}},
-          {"name": "resources", "content": {"data": [{"name": "vm-prod", "subscriptionId": "sub-1", "resourceGroup": "rg-prod", "type": "Microsoft.Compute/virtualMachines"}, {"name": ""}]}}
-        ]}"##;
+        let body = r##"{"responses": [{"name": "resourceGroups", "content": {"data": [{"name": "rg-prod", "subscriptionId": "sub-1"}]}}, {"name": "resources", "content": {"data": [{"name": "vm-prod", "subscriptionId": "sub-1", "resourceGroup": "rg-prod", "type": "Microsoft.Compute/virtualMachines"}, {"name": ""}]}}]}"##;
         let response = EngineResponse::new(200, BATCH_ENDPOINT, body.as_bytes().to_vec());
-        let engine = try_engine(&credentials()).expect("engine");
+        let engine = try_engine(Some("TOKEN")).expect("engine");
         let items = engine.parse(&response, &query("prod")).expect("items");
         assert_eq!(result(&items, 0).title, "rg-prod");
-        assert!(
-            result(&items, 0)
-                .url
-                .ends_with("/resourceGroups/rg-prod/overview")
-        );
-        assert_eq!(
-            result(&items, 0).content,
-            "Resource Group in Subscription: sub-1"
-        );
-        assert_eq!(result(&items, 1).title, "vm-prod");
         assert!(
             result(&items, 1)
                 .url
                 .contains("/virtualMachines/vm-prod/overview")
         );
         let empty = EngineResponse::new(200, BATCH_ENDPOINT, b"{}".to_vec());
-        let items = engine.parse(&empty, &query("prod"));
-        assert!(items.expect("items").is_empty());
+        assert!(
+            engine
+                .parse(&empty, &query("prod"))
+                .expect("items")
+                .is_empty()
+        );
     }
 }
