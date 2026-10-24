@@ -146,6 +146,7 @@ cargo test          # 735 件、外部ネットワーク不要
 
 | ドキュメント | 内容 |
 | :--- | :--- |
+| [docs/INTRO.md](docs/INTRO.md) | **AI エージェントに使わせるための紹介**（用途・組み込み例） |
 | [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) | SearXNG とどこが同じでどこが違うか |
 | [docs/COVERAGE.md](docs/COVERAGE.md) | 対応している検索サイトの一覧 |
 | [docs/PORTING.md](docs/PORTING.md) | 内部構造と設定の詳細 |
