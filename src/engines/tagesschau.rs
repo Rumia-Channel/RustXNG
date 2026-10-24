@@ -1,7 +1,4 @@
 //! Tagesschau engine, ported from searx/engines/tagesschau.py.
-//!
-//! The ARD search API is used, stories and videos are mapped to the same
-//! result fields as upstream.
 // engine-id: tagesschau
 
 use std::sync::Arc;
@@ -28,7 +25,7 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 };
 
 const BASE_URL: &str = "https://www.tagesschau.de";
-const RESULTS_PER_PAGE: i64 = 10;
+const PAGE_SIZE: i64 = 10;
 
 /// The Tagesschau, the news program of the ARD.
 pub struct Tagesschau {
@@ -57,14 +54,14 @@ impl Engine for Tagesschau {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
-        let page_size = self
+        let size = self
             .meta
             .opt_i64("results_per_page")
             .filter(|value| *value > 0)
-            .unwrap_or(RESULTS_PER_PAGE);
+            .unwrap_or(PAGE_SIZE);
         let pairs: Vec<(&str, String)> = vec![
             ("searchText", query.query_text()),
-            ("pageSize", page_size.to_string()),
+            ("pageSize", size.to_string()),
             ("resultPage", pageno.saturating_sub(1).to_string()),
         ];
         Ok(EngineRequest::get(format!(
@@ -84,13 +81,12 @@ impl Engine for Tagesschau {
         else {
             return Ok(Vec::new());
         };
-        let use_source_url = self.meta.opt_bool("use_source_url").unwrap_or(true);
-        let base = self.base();
+        let source = self.meta.opt_bool("use_source_url").unwrap_or(true);
         let mut results = Vec::new();
         for item in items {
             let entry = match json_str(item, "type").as_str() {
-                "story" | "webview" => story(item, use_source_url),
-                "video" => video(item, base),
+                "story" | "webview" => story(item, source),
+                "video" => video(item, self.base()),
                 _ => None,
             };
             if let Some(entry) = entry {
@@ -101,10 +97,10 @@ impl Engine for Tagesschau {
     }
 }
 
-/// A story result, upstream's _story.
-fn story(item: &serde_json::Value, use_source_url: bool) -> Option<EngineItem> {
+/// Upstream's _story.
+fn story(item: &serde_json::Value, source: bool) -> Option<EngineItem> {
     let title = json_str(item, "title");
-    let url = if use_source_url {
+    let url = if source {
         json_str(item, "shareURL")
     } else {
         json_str(item, "detailsweb")
@@ -112,8 +108,9 @@ fn story(item: &serde_json::Value, use_source_url: bool) -> Option<EngineItem> {
     if title.is_empty() || !is_http(&url) {
         return None;
     }
-    let mut builder = ResultBuilder::new(url, title).content(json_str(item, "firstSentence"));
-    builder = builder.published_date(short_date(&json_str(item, "date")));
+    let mut builder = ResultBuilder::new(url, title)
+        .content(json_str(item, "firstSentence"))
+        .published_date(short_date(&json_str(item, "date")));
     let thumbnail = json_str(item, "teaserImage.imageVariants.16x9-256");
     if is_http(&thumbnail) {
         builder = builder.thumbnail(thumbnail);
@@ -121,13 +118,13 @@ fn story(item: &serde_json::Value, use_source_url: bool) -> Option<EngineItem> {
     Some(builder.build())
 }
 
-/// A video result, upstream's _video.
+/// Upstream's _video.
 fn video(item: &serde_json::Value, base: &str) -> Option<EngineItem> {
     let title = video_title(&json_str(item, "title"));
     if title.is_empty() {
         return None;
     }
-    let streams = ["h264s", "h264m", "h264l", "h264xl"]
+    let stream = ["h264s", "h264m", "h264l", "h264xl"]
         .iter()
         .map(|key| json_str(item, &format!("streams.{key}")))
         .find(|value| is_http(value));
@@ -135,7 +132,7 @@ fn video(item: &serde_json::Value, base: &str) -> Option<EngineItem> {
         "{base}/multimedia/video/{}.html",
         json_str(item, "sophoraId")
     );
-    let url = streams.clone().unwrap_or(page);
+    let url = stream.clone().unwrap_or(page);
     if !is_http(&url) {
         return None;
     }
@@ -143,7 +140,7 @@ fn video(item: &serde_json::Value, base: &str) -> Option<EngineItem> {
         .content(json_str(item, "firstSentence"))
         .template(Template::Videos)
         .published_date(short_date(&json_str(item, "date")));
-    if let Some(stream) = streams {
+    if let Some(stream) = stream {
         builder = builder.metadata("iframe_src", stream);
     }
     let thumbnail = json_str(item, "teaserImage.imageVariants.16x9-256");
@@ -153,18 +150,16 @@ fn video(item: &serde_json::Value, base: &str) -> Option<EngineItem> {
     Some(builder.build())
 }
 
-/// The title cleanup of upstream: drop the _vapp.mxf suffix and the technical
-/// APP prefix.
+/// Drop the _vapp.mxf suffix and the technical APP prefix.
 fn video_title(raw: &str) -> String {
-    if !raw.contains("_vapp.mxf") {
+    let stripped = raw.replace("_vapp.mxf", "");
+    if stripped == raw {
         return raw.to_string();
     }
-    let stripped = raw.replace("_vapp.mxf", "");
-    let pattern = match Regex::new(r"APP\d+ (FC-)?") {
-        Ok(pattern) => pattern,
-        Err(_) => return stripped,
-    };
-    pattern.replacen(&stripped, 1, "").to_string()
+    match Regex::new(r"APP\d+ (FC-)?") {
+        Ok(pattern) => pattern.replacen(&stripped, 1, "").to_string(),
+        Err(_) => stripped,
+    }
 }
 
 /// Upstream slices the ISO date to its first 19 characters.
@@ -208,34 +203,27 @@ mod tests {
         let response = EngineResponse::new(200, BASE_URL, FIXTURE.as_bytes().to_vec());
         let items = engine().parse(&response, &query()).unwrap();
         assert_eq!(items.len(), 2);
-        match &items[0] {
-            EngineItem::Result(result) => {
-                assert_eq!(result.title, "Story title");
-                assert_eq!(result.url, "https://www.tagesschau.de/story-100.html");
-                assert_eq!(result.content, "First sentence.");
-                assert_eq!(
-                    result.published_date.as_deref(),
-                    Some("2024-05-06T10:00:00")
-                );
-                assert_eq!(
-                    result.thumbnail.as_deref(),
-                    Some("https://www.tagesschau.de/img/story.jpg")
-                );
-            }
-            _ => panic!("expected a story result"),
-        }
-        match &items[1] {
-            EngineItem::Result(result) => {
-                assert_eq!(result.title, "Clip");
-                assert_eq!(result.url, "https://media.example.com/clip.mp4");
-                assert_eq!(result.template, Template::Videos);
-                assert_eq!(
-                    result.metadata.get("iframe_src").map(String::as_str),
-                    Some("https://media.example.com/clip.mp4")
-                );
-            }
-            _ => panic!("expected a video result"),
-        }
+        let EngineItem::Result(first) = &items[0] else {
+            panic!("expected a story")
+        };
+        assert_eq!(first.title, "Story title");
+        assert_eq!(first.url, "https://www.tagesschau.de/story-100.html");
+        assert_eq!(first.content, "First sentence.");
+        assert_eq!(first.published_date.as_deref(), Some("2024-05-06T10:00:00"));
+        assert_eq!(
+            first.thumbnail.as_deref(),
+            Some("https://www.tagesschau.de/img/story.jpg")
+        );
+        let EngineItem::Result(second) = &items[1] else {
+            panic!("expected a video")
+        };
+        assert_eq!(second.title, "Clip");
+        assert_eq!(second.url, "https://media.example.com/clip.mp4");
+        assert_eq!(second.template, Template::Videos);
+        assert_eq!(
+            second.metadata.get("iframe_src").map(String::as_str),
+            Some("https://media.example.com/clip.mp4")
+        );
     }
 
     #[test]
@@ -247,15 +235,10 @@ mod tests {
         let engine = Tagesschau::from_config(&config).unwrap();
         let response = EngineResponse::new(200, BASE_URL, FIXTURE.as_bytes().to_vec());
         let items = engine.parse(&response, &query()).unwrap();
-        match &items[0] {
-            EngineItem::Result(result) => {
-                assert_eq!(
-                    result.url,
-                    "https://www.tagesschau.de/web/story-100.html"
-                );
-            }
-            _ => panic!("expected a story result"),
-        }
+        let EngineItem::Result(first) = &items[0] else {
+            panic!("expected a story")
+        };
+        assert_eq!(first.url, "https://www.tagesschau.de/web/story-100.html");
     }
 
     #[test]

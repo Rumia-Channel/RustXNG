@@ -56,10 +56,8 @@ impl Engine for SwisscowsNews {
             .opt_i64("results_per_page")
             .filter(|value| *value > 0)
             .unwrap_or(RESULTS_PER_PAGE);
-        // Upstream only looks at the language part of the SearXNG locale before
-        // calling appropriate_locale.
-        let language_part = query.locale.split('-').next().unwrap_or("all");
-        let locale = appropriate_locale(language_part);
+        // Upstream only looks at the language part of the SearXNG locale.
+        let locale = appropriate_locale(query.locale.split('-').next().unwrap_or("all"));
         let language = locale.split('-').next().unwrap_or("de").to_string();
         let freshness = match query.time_range {
             Some(TimeRange::Day) => "Day",
@@ -169,22 +167,17 @@ mod tests {
         let response = EngineResponse::new(200, BASE_URL, FIXTURE.as_bytes().to_vec());
         let items = engine().parse(&response, &query("news")).unwrap();
         assert_eq!(items.len(), 1);
-        match &items[0] {
-            EngineItem::Result(result) => {
-                assert_eq!(result.url, "https://www.example.com/a");
-                assert_eq!(result.title, "First news");
-                assert_eq!(result.content, "Some text.");
-                assert_eq!(
-                    result.published_date.as_deref(),
-                    Some("2024-05-06T10:00:00")
-                );
-                assert_eq!(
-                    result.thumbnail.as_deref(),
-                    Some("https://www.example.com/a.jpg")
-                );
-            }
-            _ => panic!("expected a news result"),
-        }
+        let EngineItem::Result(first) = &items[0] else {
+            panic!("expected a news result")
+        };
+        assert_eq!(first.url, "https://www.example.com/a");
+        assert_eq!(first.title, "First news");
+        assert_eq!(first.content, "Some text.");
+        assert_eq!(first.published_date.as_deref(), Some("2024-05-06T10:00:00"));
+        assert_eq!(
+            first.thumbnail.as_deref(),
+            Some("https://www.example.com/a.jpg")
+        );
     }
 
     #[test]
@@ -195,14 +188,22 @@ mod tests {
                 .url
                 .starts_with("https://api.swisscows.com/news/search?")
         );
-        assert!(request.url.contains("query=rust"));
-        assert!(request.url.contains("itemsCount=20"));
-        assert!(request.url.contains("region=de-DE"));
-        assert!(request.url.contains("language=de"));
-        assert!(request.url.contains("offset=20"));
-        assert!(request.url.contains("freshness=All"));
-        assert!(request.url.contains("sortOrder=Desc"));
-        assert!(request.url.contains("sortBy=Created"));
+        for fragment in [
+            "query=rust",
+            "itemsCount=20",
+            "region=de-DE",
+            "language=de",
+            "offset=20",
+            "freshness=All",
+            "sortOrder=Desc",
+            "sortBy=Created",
+        ] {
+            assert!(
+                request.url.contains(fragment),
+                "missing {fragment} in {}",
+                request.url
+            );
+        }
     }
 
     #[test]

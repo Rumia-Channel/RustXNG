@@ -64,6 +64,7 @@ pub mod crates;
 pub mod crossref;
 pub mod currency_convert;
 pub mod dailymotion;
+pub mod deepl;
 pub mod deezer;
 pub mod destatis;
 pub mod deviantart;
@@ -133,6 +134,7 @@ pub mod luxxle;
 pub mod magnific;
 pub mod marginalia;
 pub mod mastodon;
+pub mod material_icons;
 pub mod mediathekviewweb;
 pub mod mediawiki;
 pub mod metacpan;
@@ -180,6 +182,7 @@ pub mod r360search;
 pub mod r360search_videos;
 pub mod radio_browser;
 pub mod repology;
+pub mod resulthunter;
 pub mod reuters;
 pub mod rottentomatoes;
 pub mod rumble;
@@ -187,22 +190,31 @@ pub mod s1search;
 pub mod s1search_rampjs;
 pub mod scanr_structures;
 pub mod searchrockit;
+pub mod searchzee;
+pub mod seekninja;
+pub mod selfhst;
 pub mod semantic_scholar;
+pub mod senscritique;
 pub mod sepiasearch;
 pub mod seznam;
 pub mod shopify_stock;
 pub mod sogou;
 pub mod sogou_images;
 pub mod sogou_videos;
+pub mod sogou_wechat;
 pub mod solidtorrents;
 pub mod soundcloud;
 pub mod sourcehut;
+pub mod spotify;
 pub mod springer;
 pub mod stackexchange;
 pub mod startpage;
 pub mod startpagina;
 pub mod steam;
+pub mod stocksnap;
 pub mod swisscows;
+pub mod swisscows_news;
+pub mod tagesschau;
 pub mod tiger;
 pub mod tineye;
 pub mod tokyotoshokan;
@@ -213,6 +225,8 @@ pub mod tusksearch;
 pub mod unsplash;
 pub mod uxwing;
 pub mod vimeo;
+pub mod voidlinux;
+pub mod vuhuv;
 pub mod wallhaven;
 pub mod wikicommons;
 pub mod wikidata;
@@ -222,6 +236,7 @@ pub mod wolframalpha_noapi;
 pub mod wordnik;
 pub mod www1x;
 pub mod xpath;
+pub mod xprivo;
 pub mod yahoo;
 pub mod yandex;
 pub mod yep;
@@ -442,6 +457,21 @@ pub fn build(config: &EngineConfig) -> Result<EngineHandle, String> {
         "tiger" => tiger::Tiger::from_config(config)?,
         "tineye" => tineye::Tineye::from_config(config)?,
         "uxwing" => uxwing::Uxwing::from_config(config)?,
+        "deepl" => deepl::Deepl::from_config(config)?,
+        "material_icons" => material_icons::MaterialIcons::from_config(config)?,
+        "resulthunter" => resulthunter::Resulthunter::from_config(config)?,
+        "searchzee" => searchzee::SearchZee::from_config(config)?,
+        "seekninja" => seekninja::SeekNinja::from_config(config)?,
+        "selfhst" => selfhst::Selfhst::from_config(config)?,
+        "senscritique" => senscritique::Senscritique::from_config(config)?,
+        "sogou_wechat" => sogou_wechat::SogouWechat::from_config(config)?,
+        "spotify" => spotify::Spotify::from_config(config)?,
+        "stocksnap" => stocksnap::Stocksnap::from_config(config)?,
+        "swisscows_news" => swisscows_news::SwisscowsNews::from_config(config)?,
+        "tagesschau" => tagesschau::Tagesschau::from_config(config)?,
+        "voidlinux" => voidlinux::VoidLinux::from_config(config)?,
+        "vuhuv" => vuhuv::Vuhuv::from_config(config)?,
+        "xprivo" => xprivo::Xprivo::from_config(config)?,
         other => {
             return Err(format!(
                 "engine {:?} uses the unknown engine type {other:?}",

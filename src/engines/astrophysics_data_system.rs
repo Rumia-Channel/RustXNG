@@ -53,27 +53,12 @@ impl Engine for AstrophysicsDataSystem {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
-        let key = self
-            .meta
-            .api_key
-            .as_deref()
-            .map(str::trim)
-            .unwrap_or_default();
-        if PLACEHOLDERS.contains(&key) {
-            return Err(EngineError::Message("missing ADS api_key".to_string()));
-        }
-        let base = self
-            .meta
-            .base_url
-            .as_deref()
-            .unwrap_or(BASE_URL)
-            .trim_end_matches('/');
-        let sort = self
-            .meta
-            .opt_str("ads_sort")
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .unwrap_or("read_count desc");
+        let key = self.meta.api_key.as_deref();
+        let key = key.map(str::trim).unwrap_or_default();
+        let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL);
+        let base = base.trim_end_matches('/');
+        let sort = self.meta.opt_str("ads_sort");
+        let sort = sort.unwrap_or("read_count desc");
         let start = (pageno.max(1) - 1) as i64 * PAGE_SIZE;
         let pairs = vec![
             ("q", query.query_text()),
@@ -96,12 +81,7 @@ impl Engine for AstrophysicsDataSystem {
     ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
         if let Some(error) = json_path(&json, "error") {
-            let message = json_str(error, "msg");
-            return Err(EngineError::Message(if message.is_empty() {
-                "ADS API error".to_string()
-            } else {
-                message
-            }));
+            return Err(EngineError::Message(json_str(error, "msg")));
         }
         let docs = match json_path(&json, "response.docs").and_then(|value| value.as_array()) {
             Some(docs) => docs,
@@ -109,11 +89,7 @@ impl Engine for AstrophysicsDataSystem {
         };
         let mut results = Vec::new();
         for doc in docs {
-            let title = string_list(doc, "title")
-                .into_iter()
-                .next()
-                .map(|value| strip_tags(&value))
-                .unwrap_or_default();
+            let title = strip_tags(&json_str(doc, "title.0"));
             let url = format!("{PAPER_URL}/{}/", json_str(doc, "bibcode"));
             if title.is_empty() || !is_http_url(&url) {
                 continue;
@@ -150,19 +126,16 @@ fn is_http_url(url: &str) -> bool {
 }
 
 fn string_list(value: &serde_json::Value, key: &str) -> Vec<String> {
-    json_path(value, key)
-        .and_then(|entry| entry.as_array())
-        .map(|entries| entries.iter().filter_map(json_scalar).collect())
-        .unwrap_or_default()
-}
-
-fn json_scalar(value: &serde_json::Value) -> Option<String> {
-    match value {
-        serde_json::Value::String(entry) => Some(entry.clone()),
-        serde_json::Value::Number(entry) => Some(entry.to_string()),
-        serde_json::Value::Bool(entry) => Some(entry.to_string()),
-        _ => None,
+    let Some(entries) = json_path(value, key).and_then(|entry| entry.as_array()) else {
+        return Vec::new();
+    };
+    let mut values = Vec::new();
+    for entry in entries {
+        if let Some(value) = entry.as_str() {
+            values.push(value.to_string());
+        }
     }
+    values
 }
 
 #[cfg(test)]
@@ -171,13 +144,11 @@ mod tests {
     use crate::engine::EngineRegistry;
 
     const FIXTURE: &str = r##"{"response":{"docs":[
-      {"bibcode":"2024ApJ...0001A","title":["A <b>Bright</b> Star"],
-       "abstract":"We study stars.","date":"2024-01-01T00:00:00Z",
-       "author":["A1","A2","A3","A4","A5","A6","A7","A8","A9","A10","A11","A12","A13","A14","A15","A16"],
-       "doi":["10.1000/xyz"],"issn":["0004-637X"],"keyword":["stars"],
-       "page":["1","2"],"pub":"ApJ","year":"2024","volume":"100",
-       "read_count":"42","pubnote":["Accepted"]}
-    ]}}"##;
+      {"bibcode":"2024ApJ...0001A","title":["A <b>Bright</b> Star"],"abstract":"We study stars.",
+       "date":"2024-01-01T00:00:00Z","author":["A1","A2","A3","A4","A5","A6","A7","A8","A9","A10",
+       "A11","A12","A13","A14","A15","A16"],"doi":["10.1000/xyz"],"issn":["0004-637X"],
+       "keyword":["stars"],"page":["1","2"],"pub":"ApJ","year":"2024","volume":"100",
+       "read_count":"42","pubnote":["Accepted"]}]}}"##;
 
     fn engine() -> Arc<AstrophysicsDataSystem> {
         let mut config = EngineConfig::new("ads", "astrophysics_data_system", "ads", &["science"]);
@@ -208,40 +179,36 @@ mod tests {
         let response = EngineResponse::new(200, BASE_URL, FIXTURE.as_bytes().to_vec());
         let items = engine().parse(&response, &search()).unwrap();
         assert_eq!(items.len(), 1);
-        match &items[0] {
-            EngineItem::Result(result) => {
-                assert_eq!(result.title, "A Bright Star");
-                assert_eq!(
-                    result.url,
-                    "https://ui.adsabs.harvard.edu/abs/2024ApJ...0001A/"
-                );
-                assert_eq!(result.content, "We study stars.");
-                assert!(
-                    result
-                        .author
-                        .as_deref()
-                        .unwrap_or_default()
-                        .ends_with("et al.")
-                );
-                assert_eq!(
-                    result.published_date.as_deref(),
-                    Some("2024-01-01T00:00:00Z")
-                );
-                assert_eq!(
-                    result.metadata.get("doi").map(String::as_str),
-                    Some("10.1000/xyz")
-                );
-                assert_eq!(
-                    result.metadata.get("pages").map(String::as_str),
-                    Some("1,2")
-                );
-                assert_eq!(
-                    result.metadata.get("publisher").map(String::as_str),
-                    Some("ApJ 2024")
-                );
-            }
-            _ => panic!("expected a result"),
-        }
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
+        assert_eq!(result.title, "A Bright Star");
+        assert_eq!(
+            result.url,
+            "https://ui.adsabs.harvard.edu/abs/2024ApJ...0001A/"
+        );
+        assert_eq!(result.content, "We study stars.");
+        assert!(
+            result
+                .author
+                .as_deref()
+                .unwrap_or_default()
+                .ends_with("et al.")
+        );
+        assert_eq!(
+            result.published_date.as_deref(),
+            Some("2024-01-01T00:00:00Z")
+        );
+        assert_eq!(
+            result.metadata.get("doi").map(String::as_str),
+            Some("10.1000/xyz")
+        );
+        assert_eq!(
+            result.metadata.get("pages").map(String::as_str),
+            Some("1,2")
+        );
+        let publisher = result.metadata.get("publisher").map(String::as_str);
+        assert_eq!(publisher, Some("ApJ 2024"));
         let empty = EngineResponse::new(200, BASE_URL, b"{\"response\":{}}".to_vec());
         assert!(engine().parse(&empty, &search()).unwrap().is_empty());
     }

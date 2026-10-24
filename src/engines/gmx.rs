@@ -27,6 +27,7 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 };
 
 const BASE_URL: &str = "https://search.gmx.com";
+const ACCEPT: &str = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 /// The GMX web search.
@@ -48,21 +49,14 @@ impl Engine for Gmx {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
-        let base = self
-            .meta
-            .base_url
-            .as_deref()
-            .unwrap_or(BASE_URL)
-            .trim_end_matches('/');
+        let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL);
+        let base = base.trim_end_matches('/');
         // The last digit is dropped, exactly like upstream's time based parameter.
         let now = chrono::Utc::now().timestamp() / 10;
-        let page_hash = self
-            .meta
-            .opt_str("page_hash")
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .map(str::to_string)
-            .unwrap_or_else(|| now.to_string());
+        let page_hash = match self.meta.opt_str("page_hash").map(str::trim) {
+            Some(value) if !value.is_empty() => value.to_string(),
+            _ => now.to_string(),
+        };
         let mut pairs = vec![
             ("lang", "en".to_string()),
             ("q", query.query_text()),
@@ -85,10 +79,7 @@ impl Engine for Gmx {
         Ok(
             EngineRequest::get(format!("{base}/desk?{}", query_string(&pairs)))
                 .header("User-Agent", USER_AGENT)
-                .header(
-                    "Accept",
-                    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                )
+                .header("Accept", ACCEPT)
                 .header("Accept-Language", "en-US,en;q=0.9")
                 .header("Connection", "keep-alive")
                 .header("Referer", base),
@@ -109,8 +100,8 @@ impl Engine for Gmx {
             return Ok(Vec::new());
         };
         let mut items = Vec::new();
-        if let Some(suggestions) = json_path(results_node, "rs").and_then(|value| value.as_array())
-        {
+        let suggestions = json_path(results_node, "rs").and_then(|value| value.as_array());
+        if let Some(suggestions) = suggestions {
             for suggestion in suggestions {
                 let label = json_str(suggestion, "t");
                 if !label.is_empty() {
@@ -118,9 +109,9 @@ impl Engine for Gmx {
                 }
             }
         }
-        let hits = match json_path(results_node, "hits").and_then(|value| value.as_array()) {
-            Some(hits) => hits,
-            None => return Ok(items),
+        let hits = json_path(results_node, "hits").and_then(|value| value.as_array());
+        let Some(hits) = hits else {
+            return Ok(items);
         };
         for hit in hits {
             let url = json_str(hit, "u");
@@ -177,19 +168,15 @@ mod tests {
         assert!(request.url.contains("time=w"));
         assert!(request.url.contains("h="));
         assert!(request.url.contains("t="));
-        assert_eq!(
-            request.headers.get("referer").unwrap().to_str().unwrap(),
-            "https://search.gmx.com"
-        );
+        let referer = request.headers.get("referer").unwrap().to_str().unwrap();
+        assert_eq!(referer, "https://search.gmx.com");
     }
 
     #[test]
     fn page_hash_setting_is_used() {
         let mut config = EngineConfig::new("gmx", "gmx", "gmx", &["general"]);
-        config.extra.insert(
-            "page_hash".to_string(),
-            toml::Value::String("abc123".to_string()),
-        );
+        let page_hash = toml::Value::String("abc123".to_string());
+        config.extra.insert("page_hash".to_string(), page_hash);
         let engine = Gmx::from_config(&config).unwrap();
         let request = engine.build_request(&search(), 1).unwrap();
         assert!(request.url.contains("h=abc123"));
@@ -200,28 +187,24 @@ mod tests {
         let response = EngineResponse::new(200, BASE_URL, FIXTURE.as_bytes().to_vec());
         let items = engine().parse(&response, &search()).unwrap();
         assert_eq!(items.len(), 2);
-        match &items[0] {
-            EngineItem::Suggestion(suggestion) => assert_eq!(suggestion, "rust language"),
-            _ => panic!("expected a suggestion"),
-        }
-        match &items[1] {
-            EngineItem::Result(result) => {
-                assert_eq!(result.url, "https://www.rust-lang.org/");
-                assert_eq!(result.title, "The Rust language");
-                assert_eq!(result.content, "Fast and safe.");
-            }
-            _ => panic!("expected a result"),
-        }
+        let EngineItem::Suggestion(suggestion) = &items[0] else {
+            panic!("expected a suggestion")
+        };
+        assert_eq!(suggestion, "rust language");
+        let EngineItem::Result(result) = &items[1] else {
+            panic!("expected a result")
+        };
+        assert_eq!(result.url, "https://www.rust-lang.org/");
+        assert_eq!(result.title, "The Rust language");
+        assert_eq!(result.content, "Fast and safe.");
     }
 
     #[test]
     fn captcha_pages_are_reported() {
-        let response =
-            EngineResponse::new(200, BASE_URL, b"<div id=\"spam-messages\"></div>".to_vec());
-        assert!(matches!(
-            engine().parse(&response, &search()),
-            Err(EngineError::Captcha)
-        ));
+        let body = b"<div id=\"spam-messages\"></div>".to_vec();
+        let response = EngineResponse::new(200, BASE_URL, body);
+        let outcome = engine().parse(&response, &search());
+        assert!(matches!(outcome, Err(EngineError::Captcha)));
         let empty = EngineResponse::new(200, BASE_URL, b"{}".to_vec());
         assert!(engine().parse(&empty, &search()).unwrap().is_empty());
     }

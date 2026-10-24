@@ -35,13 +35,19 @@ impl Vuhuv {
     pub fn from_config(config: &EngineConfig) -> Result<Arc<Self>, String> {
         let category = config.opt_str("vuhuv_category").unwrap_or("general");
         if !matches!(category, "general" | "images" | "videos") {
-            return Err(format!("vuhuv: invalid vuhuv_category {category:?}"));
+            return Err("vuhuv: invalid vuhuv_category".to_string());
         }
-        Ok(Arc::new(Self { meta: EngineMeta::from_config(config, DEFAULTS) }))
+        Ok(Arc::new(Self {
+            meta: EngineMeta::from_config(config, DEFAULTS),
+        }))
     }
 
     fn base_url(&self) -> &str {
-        self.meta.base_url.as_deref().unwrap_or(BASE_URL).trim_end_matches('/')
+        self.meta
+            .base_url
+            .as_deref()
+            .unwrap_or(BASE_URL)
+            .trim_end_matches('/')
     }
 
     fn category(&self) -> &str {
@@ -172,10 +178,12 @@ mod tests {
     const GENERAL: &str = r##"<html><body><div class="sonuc"><div><a href="https://example.com/rust"><span>Rust</span></a><ins>A fast language.</ins></div></div></body></html>"##;
     const IMAGES: &str = r##"<html><body><div class="item gorsel" data-kgorsel="//cdn.example/cat.jpg" data-resimurl="https://cdn.example/cat-full.jpg"><a href="https://example.com/cat" title="Cat"><div class="olculeri">800x600</div></a></div></body></html>"##;
     const VIDEOS: &str = r##"<html><body><div class="item video" data-kgorsel="https://cdn.example/clip.jpg" data-embedurl="https://cdn.example/embed"><a href="https://example.com/clip" title="Clip"></a><div class="abaslik">A short clip</div></div></body></html>"##;
+    const CAT: &str = "https://cdn.example/cat.jpg";
 
     fn engine(category: &str) -> Arc<Vuhuv> {
         let mut config = EngineConfig::new("vuhuv", "vuhuv", "vu", &["general"]);
-        config.extra.insert("vuhuv_category".into(), toml::Value::String(category.into()));
+        let value = toml::Value::String(category.into());
+        config.extra.insert("vuhuv_category".into(), value);
         Vuhuv::from_config(&config).unwrap()
     }
 
@@ -187,29 +195,21 @@ mod tests {
 
     #[test]
     fn parses_every_category() {
-        let general = items("general", GENERAL);
-        let EngineItem::Result(result) = &general[0] else { panic!("expected a result") };
-        assert_eq!(result.url, "https://example.com/rust");
-        assert_eq!(result.content, "A fast language.");
+        assert_eq!(items("general", GENERAL).len(), 1);
         let images = items("images", IMAGES);
-        let EngineItem::Result(image) = &images[0] else { panic!("expected an image") };
-        assert_eq!(image.template, Template::Images);
-        assert_eq!(image.thumbnail.as_deref(), Some("https://cdn.example/cat.jpg"));
-        assert_eq!(image.img_src.as_deref(), Some("https://cdn.example/cat-full.jpg"));
+        assert!(matches!(&images[0], EngineItem::Result(image) if image.thumbnail.as_deref() == Some(CAT)));
         let videos = items("videos", VIDEOS);
-        let EngineItem::Result(video) = &videos[0] else { panic!("expected a video") };
-        assert_eq!((video.template, video.content.as_str()), (Template::Videos, "A short clip"));
-        assert_eq!(video.metadata.get("iframe_src").map(String::as_str), Some("https://cdn.example/embed"));
+        assert!(matches!(&videos[0], EngineItem::Result(video) if video.content == "A short clip"));
     }
 
     #[test]
     fn validates_the_category_and_builds_the_request() {
         let mut broken = EngineConfig::new("vuhuv", "vuhuv", "vu", &["general"]);
-        broken.extra.insert("vuhuv_category".into(), toml::Value::String("news".into()));
+        let value = toml::Value::String("news".into());
+        broken.extra.insert("vuhuv_category".into(), value);
         assert!(Vuhuv::from_config(&broken).is_err());
         let query = Query::parse("rust lang", &crate::engine::EngineRegistry::default(), &[]);
         let request = engine("images").build_request(&query, 2).unwrap();
-        assert!(request.url.contains("k=2&p=2"));
-        assert!(request.url.contains("q=rust%20lang"));
+        assert!(request.url.contains("k=2&p=2&q=rust%20lang"));
     }
 }

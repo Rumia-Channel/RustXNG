@@ -1,12 +1,9 @@
 //! Sogou WeChat engine, ported from searx/engines/sogou_wechat.py.
-//!
-//! Sogou indexes the public WeChat articles; the result list is plain HTML.
 // engine-id: sogou_wechat
 
 use std::sync::Arc;
 
 use chrono::TimeZone;
-use regex::Regex;
 
 use crate::engine::util::*;
 use crate::engine::{
@@ -74,7 +71,6 @@ impl Engine for SogouWechat {
     ) -> Result<Vec<EngineItem>, EngineError> {
         let html = response.html()?;
         let base = self.base().to_string();
-        let timestamp = Regex::new(r"timeConvert\('(\d+)'\)").ok();
         let mut results = Vec::new();
         for item in select_elements(&html, "li[id*='sogou_vr_']")? {
             let Some(link) = child(item, "h3 a") else {
@@ -112,39 +108,39 @@ impl Engine for SogouWechat {
                     builder = builder.thumbnail(src);
                 }
             }
-            if let Some(pattern) = &timestamp {
-                builder = with_published_date(builder, item, pattern);
-            }
+            builder = with_published_date(builder, item);
             results.push(builder.build());
         }
         Ok(results)
     }
 }
 
-/// The published date is encoded in a timeConvert script inside the item.
-fn with_published_date(
-    mut builder: ResultBuilder,
-    item: scraper::ElementRef<'_>,
-    pattern: &Regex,
-) -> ResultBuilder {
+/// The date is encoded in a timeConvert script inside the item.
+fn with_published_date(mut builder: ResultBuilder, item: scraper::ElementRef<'_>) -> ResultBuilder {
     for script in children(item, "script") {
-        let script_text = script.text().collect::<Vec<_>>().join(" ");
-        if !script_text.contains("timeConvert") {
+        let body = script.text().collect::<Vec<_>>().join(" ");
+        if !body.contains("timeConvert(") {
             continue;
         }
-        let seconds = pattern
-            .captures(&script_text)
-            .and_then(|captures| captures.get(1))
-            .and_then(|value| value.as_str().parse::<i64>().ok());
-        let Some(seconds) = seconds else {
-            continue;
-        };
-        if let Some(date) = chrono::Local.timestamp_opt(seconds, 0).single() {
-            builder = builder.published_date(date.format("%Y-%m-%dT%H:%M:%S").to_string());
+        if let Some(seconds) = timestamp_of(&body) {
+            if let Some(date) = chrono::Local.timestamp_opt(seconds, 0).single() {
+                builder = builder.published_date(date.format("%Y-%m-%dT%H:%M:%S").to_string());
+            }
         }
         break;
     }
     builder
+}
+
+/// The first number after the timeConvert call.
+fn timestamp_of(body: &str) -> Option<i64> {
+    let start = body.find("timeConvert(")? + "timeConvert(".len();
+    let digits: String = body[start..]
+        .chars()
+        .skip_while(|character| !character.is_ascii_digit())
+        .take_while(|character| character.is_ascii_digit())
+        .collect();
+    digits.parse().ok()
 }
 
 fn is_http(url: &str) -> bool {
@@ -166,9 +162,7 @@ mod tests {
         <h3><a href="https://mp.weixin.qq.com/s/xyz">Second article</a></h3>
         <p class="txt-info extra">Second summary.</p>
       </li>
-      <li id="sogou_vr_11002601_3">
-        <h3><a href="/link?url=empty"></a></h3>
-      </li>
+      <li id="sogou_vr_11002601_3"><h3><a href="/link?url=empty"></a></h3></li>
     </ul></body></html>"##;
 
     fn engine() -> Arc<SogouWechat> {
@@ -196,27 +190,23 @@ mod tests {
             .unwrap()
             .format("%Y-%m-%dT%H:%M:%S")
             .to_string();
-        match &items[0] {
-            EngineItem::Result(result) => {
-                assert_eq!(result.title, "WeChat article title");
-                assert_eq!(result.url, "https://weixin.sogou.com/link?url=abc");
-                assert_eq!(result.content, "Some summary text.");
-                assert_eq!(
-                    result.thumbnail.as_deref(),
-                    Some("https://img.example.com/thumb.jpg")
-                );
-                assert_eq!(result.published_date.as_deref(), Some(expected.as_str()));
-            }
-            _ => panic!("expected an article result"),
-        }
-        match &items[1] {
-            EngineItem::Result(result) => {
-                assert_eq!(result.url, "https://mp.weixin.qq.com/s/xyz");
-                assert_eq!(result.content, "Second summary.");
-                assert!(result.published_date.is_none());
-            }
-            _ => panic!("expected an article result"),
-        }
+        let EngineItem::Result(first) = &items[0] else {
+            panic!("expected an article")
+        };
+        assert_eq!(first.title, "WeChat article title");
+        assert_eq!(first.url, "https://weixin.sogou.com/link?url=abc");
+        assert_eq!(first.content, "Some summary text.");
+        assert_eq!(
+            first.thumbnail.as_deref(),
+            Some("https://img.example.com/thumb.jpg")
+        );
+        assert_eq!(first.published_date.as_deref(), Some(expected.as_str()));
+        let EngineItem::Result(second) = &items[1] else {
+            panic!("expected an article")
+        };
+        assert_eq!(second.url, "https://mp.weixin.qq.com/s/xyz");
+        assert_eq!(second.content, "Second summary.");
+        assert!(second.published_date.is_none());
     }
 
     #[test]
@@ -231,6 +221,11 @@ mod tests {
     #[test]
     fn a_page_without_items_yields_no_results() {
         let response = EngineResponse::new(200, BASE_URL, b"<html></html>".to_vec());
-        assert!(engine().parse(&response, &query("rust")).unwrap().is_empty());
+        assert!(
+            engine()
+                .parse(&response, &query("rust"))
+                .unwrap()
+                .is_empty()
+        );
     }
 }

@@ -58,8 +58,10 @@ impl Engine for Selfhst {
     }
 
     fn build_request(&self, _query: &Query, _pageno: u32) -> Result<EngineRequest, EngineError> {
-        Ok(EngineRequest::get(format!("{}/index.json", self.cdn_base()))
-            .header("Accept", "application/json"))
+        Ok(
+            EngineRequest::get(format!("{}/index.json", self.cdn_base()))
+                .header("Accept", "application/json"),
+        )
     }
 
     fn parse(
@@ -199,7 +201,12 @@ mod tests {
     #[test]
     fn skips_unusable_icons() {
         let response = EngineResponse::new(200, CDN_BASE, FIXTURE.as_bytes().to_vec());
-        assert!(engine().parse(&response, &query("broken")).unwrap().is_empty());
+        assert!(
+            engine()
+                .parse(&response, &query("broken"))
+                .unwrap()
+                .is_empty()
+        );
         assert!(
             engine()
                 .parse(&response, &query("nameless"))

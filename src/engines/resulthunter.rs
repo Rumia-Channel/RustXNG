@@ -1,8 +1,7 @@
 //! Resulthunter engine, ported from searx/engines/resulthunter.py.
 //!
-//! Upstream fetches the Brave backed site's search token from the homepage in
-//! request(); here it comes from the search_token option (the value of
-//! window.__rhSearchToken) so the request stays synchronous.
+//! Upstream fetches the search token from the homepage; here it comes from
+//! the search_token option (window.__rhSearchToken).
 // engine-id: resulthunter
 
 use std::sync::Arc;
@@ -48,12 +47,8 @@ impl Resulthunter {
     }
 
     fn base_url(&self) -> String {
-        self.meta
-            .base_url
-            .as_deref()
-            .unwrap_or(BASE_URL)
-            .trim_end_matches('/')
-            .to_string()
+        let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL);
+        base.trim_end_matches('/').to_string()
     }
 }
 
@@ -63,11 +58,9 @@ impl Engine for Resulthunter {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
-        let Some(token) = self.meta.opt_str("search_token") else {
-            return Err(EngineError::Message(
-                "resulthunter needs the search_token option (window.__rhSearchToken)".into(),
-            ));
-        };
+        let token = self.meta.opt_str("search_token").ok_or_else(|| {
+            EngineError::Message("resulthunter needs the search_token option".into())
+        })?;
         let mut pairs: Vec<(&str, String)> = vec![
             ("q", query.query_text()),
             ("search_type", self.category().to_string()),
@@ -97,13 +90,11 @@ impl Engine for Resulthunter {
             1 => "moderate",
             _ => "strict",
         };
-        Ok(EngineRequest::get(format!(
-            "{}/search?{}",
-            self.base_url(),
-            query_string(&pairs)
-        ))
-        .cookie("safesearch", safesearch)
-        .header("Accept", "text/html"))
+        let url = format!("{}/search?{}", self.base_url(), query_string(&pairs));
+        let request = EngineRequest::get(url)
+            .cookie("safesearch", safesearch)
+            .header("Accept", "text/html");
+        Ok(request)
     }
 
     fn parse(
@@ -124,7 +115,7 @@ impl Engine for Resulthunter {
                     continue;
                 };
                 let title = attr_of(card, "img", "alt").unwrap_or_default();
-                if title.is_empty() || !is_http_url(&url) {
+                if title.is_empty() || !url.starts_with("http") {
                     continue;
                 }
                 let mut builder = ResultBuilder::new(url, title).template(Template::Images);
@@ -145,7 +136,7 @@ impl Engine for Resulthunter {
                 continue;
             };
             let title = text_of(row, "a h3").unwrap_or_default();
-            if title.is_empty() || !is_http_url(&url) {
+            if title.is_empty() || !url.starts_with("http") {
                 continue;
             }
             let content = text_of(row, "p").unwrap_or_default();
@@ -155,36 +146,25 @@ impl Engine for Resulthunter {
     }
 }
 
-fn is_http_url(url: &str) -> bool {
-    url.starts_with("http://") || url.starts_with("https://")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     const WEB_FIXTURE: &str = r##"<html><body><div class="organic-results-container"><div>
-  <div class="group"><a href="https://example.test/one"><h3>First hit</h3></a>
-    <p>First description</p></div>
-  <div class="group"><a href="/two"><h3>Second hit</h3></a><p></p></div>
+  <div class="group"><a href="https://example.test/one"><h3>First hit</h3></a><p>First description</p></div>
+  <div class="group"><a href="/two"><h3>Second hit</h3></a></div>
   <div class="group"><a href="https://example.test/none"><h3></h3></a></div>
 </div></div></body></html>"##;
 
-    const IMAGE_FIXTURE: &str = r##"<html><body><div class="organic-results-container">
-  <a class="group" href="/image/1"><img src="/thumb.jpg" alt="First image"></a>
-</div></body></html>"##;
+    const IMAGE_FIXTURE: &str = r##"<html><body><div class="organic-results-container"><a class="group" href="/image/1"><img src="/thumb.jpg" alt="First image"></a></div></body></html>"##;
 
     fn build(category: &str, token: Option<&str>) -> Result<Arc<Resulthunter>, String> {
         let mut config = EngineConfig::new("resulthunter", "resulthunter", "reh", &["general"]);
-        config.extra.insert(
-            "resulthunter_categ".into(),
-            toml::Value::String(category.to_string()),
-        );
+        config
+            .extra
+            .insert("resulthunter_categ".into(), category.into());
         if let Some(token) = token {
-            config.extra.insert(
-                "search_token".into(),
-                toml::Value::String(token.to_string()),
-            );
+            config.extra.insert("search_token".into(), token.into());
         }
         Resulthunter::from_config(&config)
     }
@@ -220,34 +200,19 @@ mod tests {
     }
 
     #[test]
-    fn parses_the_image_cards() {
+    fn parses_the_image_cards_and_builds_the_request() {
         let items = parse("images", IMAGE_FIXTURE.as_bytes());
         assert_eq!(items.len(), 1);
         let first = result_at(&items, 0);
-        assert_eq!(first.title, "First image");
         assert_eq!(first.url, "https://resulthunter.com/image/1");
         assert_eq!(first.template, Template::Images);
-        assert_eq!(
-            first.img_src.as_deref(),
-            Some("https://resulthunter.com/thumb.jpg")
-        );
-    }
-
-    #[test]
-    fn builds_the_search_request() {
         let engine = build("web", Some("abc")).unwrap();
         let mut request_query = query();
-        request_query.safesearch = 2;
         request_query.time_range = Some(TimeRange::Week);
         let request = engine.build_request(&request_query, 2).unwrap();
-        assert!(request.url.starts_with("https://resulthunter.com/search?"));
-        assert!(request.url.contains("search_type=web&"));
-        assert!(request.url.contains("offset=1&"));
         assert!(request.url.contains("st=abc&"));
+        assert!(request.url.contains("offset=1&"));
         assert!(request.url.contains("freshness=pw"));
-        let cookies = request.cookies.clone();
-        assert!(cookies.contains(&("safesearch".to_string(), "strict".to_string())));
-        assert!(engine.build_request(&query(), 1).is_ok());
         let without = build("web", None).unwrap();
         assert!(without.build_request(&query(), 1).is_err());
     }

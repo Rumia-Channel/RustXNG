@@ -1940,3 +1940,122 @@ engine = "uxwing"
 shortcut = "ux"
 categories = ["images", "icons"]
 disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "deepl"
+engine = "deepl"
+shortcut = "dpl"
+categories = ["general", "translate"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "material_icons"
+engine = "material_icons"
+shortcut = "mi"
+categories = ["images", "icons"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "resulthunter"
+engine = "resulthunter"
+shortcut = "reh"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "searchzee"
+engine = "searchzee"
+shortcut = "sz"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "seekninja"
+engine = "seekninja"
+shortcut = "sen"
+categories = ["general"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "selfhst"
+engine = "selfhst"
+shortcut = "si"
+categories = ["images", "icons"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "senscritique"
+engine = "senscritique"
+shortcut = "scr"
+categories = ["movies"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "sogou_wechat"
+engine = "sogou_wechat"
+shortcut = "sogouw"
+categories = ["news"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "spotify"
+engine = "spotify"
+shortcut = "stf"
+categories = ["music"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "stocksnap"
+engine = "stocksnap"
+shortcut = "sto"
+categories = ["stock images"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "swisscows_news"
+engine = "swisscows_news"
+shortcut = "swn"
+categories = ["news"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "tagesschau"
+engine = "tagesschau"
+shortcut = "ts"
+categories = ["general", "news"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "voidlinux"
+engine = "voidlinux"
+shortcut = "void"
+categories = ["packages", "it"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "vuhuv"
+engine = "vuhuv"
+shortcut = "vu"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "xprivo"
+engine = "xprivo"
+shortcut = "xpr"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working

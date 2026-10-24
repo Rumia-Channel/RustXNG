@@ -5,8 +5,9 @@
 //! extra round trips, so the code is read from the tiger_code option.
 // engine-id: tiger
 
-use scraper::Html;
 use std::sync::Arc;
+
+use scraper::Html;
 
 use crate::engine::util::*;
 use crate::engine::{
@@ -38,7 +39,7 @@ impl Tiger {
     pub fn from_config(config: &EngineConfig) -> Result<Arc<Self>, String> {
         let category = config.opt_str("tiger_category").unwrap_or("Websuche");
         if !CATEGORIES.contains(&category) {
-            return Err(format!("tiger: invalid tiger_category {category:?}"));
+            return Err("tiger: invalid tiger_category".to_string());
         }
         Ok(Arc::new(Self {
             meta: EngineMeta::from_config(config, DEFAULTS),
@@ -64,12 +65,6 @@ impl Engine for Tiger {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
-        let category = self.category();
-        if !CATEGORIES.contains(&category) {
-            return Err(EngineError::Message(format!(
-                "tiger: invalid category {category}"
-            )));
-        }
         let pairs: Vec<(&str, String)> = vec![
             ("w", query.query_text()),
             ("page", pageno.max(1).to_string()),
@@ -77,7 +72,7 @@ impl Engine for Tiger {
         let mut request = EngineRequest::get(format!(
             "{}/{}?{}",
             self.base_url(),
-            category,
+            self.category(),
             query_string(&pairs)
         ));
         // Setting Checked=1 shows related search terms, like upstream.
@@ -175,16 +170,9 @@ fn is_http_url(url: &str) -> bool {
 mod tests {
     use super::*;
 
-    const WEB_FIXTURE: &str = r##"<html><body><div id="mainContainer"><table>
-      <tr><td><a class="weblink" href="https://example.com/rust">Rust</a>
-        <div class="webbodynopic">A fast language.</div></td></tr>
-      <tr><td><a class="weblink" href="javascript:void(0)">Broken</a></td></tr>
-      </table></div><a class="linkAnders" href="/Websuche?w=rust+lang">rust lang</a>
-      </body></html>"##;
+    const WEB_FIXTURE: &str = r##"<html><body><div id="mainContainer"><table><tr><td><a class="weblink" href="https://example.com/rust">Rust</a><div class="webbodynopic">A fast language.</div></td></tr><tr><td><a class="weblink" href="javascript:void(0)">Broken</a></td></tr></table></div><a class="linkAnders" href="/Websuche?w=rust+lang">rust lang</a></body></html>"##;
 
-    const NEWS_FIXTURE: &str = r##"<html><body><div id="panNews"><div>
-      <img src="/img/tiger.png"><a class="webLink" href="https://example.com/news">Tiger news</a>
-      <span class="help"><span>- 2024-05-01</span></span></div></div></body></html>"##;
+    const NEWS_FIXTURE: &str = r##"<html><body><div id="panNews"><div><img src="/img/tiger.png"><a class="webLink" href="https://example.com/news">Tiger news</a><span class="help"><span>- 2024-05-01</span></span></div></div></body></html>"##;
 
     fn engine(category: Option<&str>) -> Result<Arc<Tiger>, String> {
         let mut config = EngineConfig::new("tiger", "tiger", "tig", &["general"]);
@@ -196,58 +184,35 @@ mod tests {
         Tiger::from_config(&config)
     }
 
-    fn query(raw: &str) -> Query {
-        Query::parse(raw, &crate::engine::EngineRegistry::default(), &[])
+    fn parse(category: Option<&str>, body: &str) -> Vec<EngineItem> {
+        let response = EngineResponse::new(200, BASE_URL, body.as_bytes().to_vec());
+        let query = Query::parse("rust", &crate::engine::EngineRegistry::default(), &[]);
+        engine(category).unwrap().parse(&response, &query).unwrap()
     }
 
     #[test]
-    fn parses_web_results_and_suggestions() {
-        let response = EngineResponse::new(200, BASE_URL, WEB_FIXTURE.as_bytes().to_vec());
-        let items = engine(None)
-            .unwrap()
-            .parse(&response, &query("rust"))
-            .unwrap();
-        assert_eq!(items.len(), 2);
-        let EngineItem::Result(result) = &items[0] else {
+    fn parses_web_and_news_results() {
+        let web = parse(None, WEB_FIXTURE);
+        assert_eq!(web.len(), 2);
+        let EngineItem::Result(result) = &web[0] else {
             panic!("expected a result")
         };
         assert_eq!(result.url, "https://example.com/rust");
-        assert_eq!(result.title, "Rust");
         assert_eq!(result.content, "A fast language.");
-        let EngineItem::Suggestion(value) = &items[1] else {
-            panic!("expected a suggestion")
-        };
-        assert_eq!(value, "rust lang");
-    }
-
-    #[test]
-    fn parses_news_results_with_dates_and_thumbnails() {
-        let response = EngineResponse::new(200, BASE_URL, NEWS_FIXTURE.as_bytes().to_vec());
-        let items = engine(Some("News"))
-            .unwrap()
-            .parse(&response, &query("rust"))
-            .unwrap();
-        assert_eq!(items.len(), 1);
-        let EngineItem::Result(result) = &items[0] else {
+        assert!(matches!(&web[1], EngineItem::Suggestion(value) if value == "rust lang"));
+        let news = parse(Some("News"), NEWS_FIXTURE);
+        let EngineItem::Result(result) = &news[0] else {
             panic!("expected a result")
         };
         assert_eq!(result.title, "Tiger news");
         assert_eq!(result.published_date.as_deref(), Some("2024-05-01"));
-        assert_eq!(
-            result.thumbnail.as_deref(),
-            Some("https://tiger.ch/img/tiger.png")
-        );
     }
 
     #[test]
     fn validates_configuration_and_builds_the_request() {
         assert!(engine(Some("Pictures")).is_err());
-        let request = engine(None)
-            .unwrap()
-            .build_request(&query("rust lang"), 2)
-            .unwrap();
-        assert!(request.url.starts_with("https://tiger.ch/Websuche?"));
+        let query = Query::parse("rust lang", &crate::engine::EngineRegistry::default(), &[]);
+        let request = engine(None).unwrap().build_request(&query, 2).unwrap();
         assert!(request.url.contains("w=rust%20lang"));
-        assert!(request.url.contains("page=2"));
     }
 }

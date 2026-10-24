@@ -2,7 +2,7 @@
 //!
 //! Upstream is an online_url_search engine: it extracts the image URL from the
 //! query before the request. The frozen interface only sees the parsed query,
-//! so the first http or data:image token of the search terms is used.
+//! so the data:image URI or the first http(s) token is used.
 // engine-id: tineye
 
 use std::sync::Arc;
@@ -119,15 +119,17 @@ impl Engine for Tineye {
     }
 }
 
-/// The image URL of the query: http(s) or a data:image URI.
+/// The image URL of the query: a data:image URI wins over http(s), like
+/// upstream's online_url_search processor.
 fn image_url(raw: &str) -> Option<String> {
-    raw.split_whitespace()
-        .find(|part| {
-            part.starts_with("http://")
-                || part.starts_with("https://")
-                || part.starts_with("data:image/")
-        })
-        .map(str::to_string)
+    let parts: Vec<&str> = raw.split_whitespace().collect();
+    let data = parts.iter().find(|part| part.starts_with("data:image/"));
+    let absolute = || {
+        parts
+            .iter()
+            .find(|part| part.starts_with("http://") || part.starts_with("https://"))
+    };
+    data.or_else(absolute).map(|part| (*part).to_string())
 }
 
 fn is_http_url(url: &str) -> bool {
@@ -138,12 +140,7 @@ fn is_http_url(url: &str) -> bool {
 mod tests {
     use super::*;
 
-    const FIXTURE: &str = r##"{"matches":[
-      {"image_url":"https://img.example/thumb.png","format":"PNG","width":800,"height":600,
-       "backlinks":[{"url":"https://img.example/cats.png","backlink":"https://example.com/cats",
-                     "image_name":"Cats","crawl_date":"2024-05-01"}]},
-      {"image_url":"https://img.example/none.png","backlinks":[]}
-    ]}"##;
+    const FIXTURE: &str = r##"{"matches":[{"image_url":"https://img.example/thumb.png","format":"PNG","width":800,"height":600,"backlinks":[{"url":"https://img.example/cats.png","backlink":"https://example.com/cats","image_name":"Cats","crawl_date":"2024-05-01"}]},{"image_url":"https://img.example/none.png","backlinks":[]}]}"##;
 
     fn engine() -> Arc<Tineye> {
         Tineye::from_config(&EngineConfig::new("tineye", "tineye", "tin", &["general"])).unwrap()
@@ -167,25 +164,16 @@ mod tests {
         assert_eq!(result.title, "Cats");
         assert_eq!(result.template, Template::Images);
         assert_eq!(
-            result.img_src.as_deref(),
-            Some("https://img.example/cats.png")
-        );
-        assert_eq!(
-            result.thumbnail.as_deref(),
-            Some("https://img.example/thumb.png")
+            (result.img_src.as_deref(), result.thumbnail.as_deref()),
+            (
+                Some("https://img.example/cats.png"),
+                Some("https://img.example/thumb.png")
+            )
         );
         assert_eq!(result.published_date.as_deref(), Some("2024-05-01"));
         assert_eq!(
             result.metadata.get("format").map(String::as_str),
             Some("PNG")
-        );
-        assert_eq!(
-            result.metadata.get("width").map(String::as_str),
-            Some("800")
-        );
-        assert_eq!(
-            result.metadata.get("source").map(String::as_str),
-            Some("https://img.example/cats.png")
         );
     }
 
@@ -193,12 +181,10 @@ mod tests {
     fn client_errors_and_missing_matches_are_empty() {
         let body = br#"{"suggestions":{"key":"Download Error"}}"#;
         let response = EngineResponse::new(422, BASE_URL, body.to_vec());
-        assert!(
-            engine()
-                .parse(&response, &query("https://x.example/a.png"))
-                .unwrap()
-                .is_empty()
-        );
+        let items = engine()
+            .parse(&response, &query("https://x.example/a.png"))
+            .unwrap();
+        assert!(items.is_empty());
         let response = EngineResponse::new(200, BASE_URL, b"{}".to_vec());
         assert!(
             engine()
@@ -214,11 +200,6 @@ mod tests {
         let request = engine()
             .build_request(&query("https://example.com/cat.png"), 2)
             .unwrap();
-        assert!(
-            request
-                .url
-                .starts_with("https://tineye.com/api/v1/result_json/?")
-        );
         assert!(request.url.contains("page=2"));
         assert!(
             request

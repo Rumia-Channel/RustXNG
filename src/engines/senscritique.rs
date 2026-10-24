@@ -1,6 +1,4 @@
 //! SensCritique engine, ported from searx/engines/senscritique.py.
-//!
-//! The movies are looked up through the public Apollo GraphQL endpoint.
 // engine-id: senscritique
 
 use std::sync::Arc;
@@ -26,14 +24,13 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 const GRAPHQL_URL: &str = "https://apollo.senscritique.com/";
 const PAGE_SIZE: i64 = 16;
 
-/// The search query of upstream, whitespace compacted but otherwise identical.
 const GRAPHQL_QUERY: &str = concat!(
     "query SearchProductExplorer($query: String, $offset: Int, $limit: Int, ",
-    "$sortBy: SearchProductExplorerSort) { searchProductExplorer(",
-    "query: $query filters: [] sortBy: $sortBy offset: $offset limit: $limit) { ",
-    "items { category dateRelease duration id originalTitle rating title url ",
-    "yearOfProduction medias { picture } countries { name } ",
-    "genresInfos { label } directors { name } stats { ratingCount } } } }"
+    "$sortBy: SearchProductExplorerSort) { searchProductExplorer(query: $query ",
+    "filters: [] sortBy: $sortBy offset: $offset limit: $limit) { items { category ",
+    "dateRelease duration id originalTitle rating title url yearOfProduction ",
+    "medias { picture } countries { name } genresInfos { label } directors { name } ",
+    "stats { ratingCount } } } }"
 );
 
 /// SensCritique, the French movie community.
@@ -73,7 +70,6 @@ impl Engine for Senscritique {
             .unwrap_or_else(|| GRAPHQL_URL.to_string());
         Ok(EngineRequest::post(url)
             .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
             .json_body(body))
     }
 
@@ -130,21 +126,24 @@ fn parse_item(item: &serde_json::Value) -> Option<EngineItem> {
     push_names(&mut parts, item, "directors", "name", "Director(s): ");
     push_names(&mut parts, item, "countries", "name", "Country: ");
     push_names(&mut parts, item, "genresInfos", "label", "Genre(s): ");
-    let duration = json_path(item, "duration")
+    let minutes = json_path(item, "duration")
         .and_then(serde_json::Value::as_i64)
-        .unwrap_or(0);
-    if duration / 60 > 0 {
-        parts.push(format!("Duration: {} min", duration / 60));
+        .unwrap_or(0)
+        / 60;
+    if minutes > 0 {
+        parts.push(format!("Duration: {minutes} min"));
     }
-    let rating = json_path(item, "rating").and_then(serde_json::Value::as_f64);
-    let votes = json_path(item, "stats.ratingCount").and_then(serde_json::Value::as_i64);
+    let rating = json_path(item, "rating")
+        .and_then(serde_json::Value::as_f64)
+        .filter(|value| *value != 0.0);
+    let votes = json_path(item, "stats.ratingCount")
+        .and_then(serde_json::Value::as_i64)
+        .filter(|value| *value != 0);
     if let (Some(rating), Some(votes)) = (rating, votes) {
-        if rating != 0.0 && votes != 0 {
-            parts.push(format!(
-                "Rating: {}/10 ({votes} votes)",
-                rating_text(rating)
-            ));
-        }
+        parts.push(format!(
+            "Rating: {}/10 ({votes} votes)",
+            rating_text(rating)
+        ));
     }
     let mut builder = ResultBuilder::new(url, display_title).content(parts.join(" | "));
     let thumbnail = json_str(item, "medias.picture");
@@ -154,8 +153,13 @@ fn parse_item(item: &serde_json::Value) -> Option<EngineItem> {
     Some(builder.build())
 }
 
-/// Join the label of a list of named objects, like upstream does.
-fn push_names(parts: &mut Vec<String>, item: &serde_json::Value, path: &str, key: &str, label: &str) {
+fn push_names(
+    parts: &mut Vec<String>,
+    item: &serde_json::Value,
+    path: &str,
+    key: &str,
+    label: &str,
+) {
     let Some(values) = json_path(item, path).and_then(serde_json::Value::as_array) else {
         return;
     };
@@ -216,29 +220,25 @@ mod tests {
         let response = EngineResponse::new(200, GRAPHQL_URL, FIXTURE.as_bytes().to_vec());
         let items = engine().parse(&response, &query("arrival")).unwrap();
         assert_eq!(items.len(), 2);
-        match &items[0] {
-            EngineItem::Result(result) => {
-                assert_eq!(result.title, "Arrival (2016)");
-                assert_eq!(result.url, "https://www.senscritique.com/film/arrival/123");
-                assert_eq!(
-                    result.content,
-                    "Film | Director(s): Denis Villeneuve | Country: USA | Genre(s): Science fiction | Duration: 116 min | Rating: 7.9/10 (12345 votes)"
-                );
-                assert_eq!(
-                    result.thumbnail.as_deref(),
-                    Some("https://media.example.com/a.jpg")
-                );
-            }
-            _ => panic!("expected a movie result"),
-        }
-        match &items[1] {
-            EngineItem::Result(result) => {
-                assert_eq!(result.title, "Le Samourai (1967)");
-                assert_eq!(result.content, "Film | Rating: 8.0/10 (100 votes)");
-                assert!(result.thumbnail.is_none());
-            }
-            _ => panic!("expected a movie result"),
-        }
+        let EngineItem::Result(first) = &items[0] else {
+            panic!("expected a result")
+        };
+        assert_eq!(first.title, "Arrival (2016)");
+        assert_eq!(first.url, "https://www.senscritique.com/film/arrival/123");
+        assert_eq!(
+            first.content,
+            "Film | Director(s): Denis Villeneuve | Country: USA | Genre(s): Science fiction | Duration: 116 min | Rating: 7.9/10 (12345 votes)"
+        );
+        assert_eq!(
+            first.thumbnail.as_deref(),
+            Some("https://media.example.com/a.jpg")
+        );
+        let EngineItem::Result(second) = &items[1] else {
+            panic!("expected a result")
+        };
+        assert_eq!(second.title, "Le Samourai (1967)");
+        assert_eq!(second.content, "Film | Rating: 8.0/10 (100 votes)");
+        assert!(second.thumbnail.is_none());
     }
 
     #[test]
@@ -248,11 +248,16 @@ mod tests {
         assert_eq!(request.url, GRAPHQL_URL);
         let body = request.json.expect("a JSON body");
         assert_eq!(body["operationName"], "SearchProductExplorer");
-        assert_eq!(body["variables"]["offset"], 16);
-        assert_eq!(body["variables"]["limit"], 16);
-        assert_eq!(body["variables"]["query"], "arrival");
-        assert_eq!(body["variables"]["sortBy"], "RELEVANCE");
-        assert!(body["query"].as_str().unwrap().contains("SearchProductExplorer"));
+        assert_eq!(
+            body["variables"],
+            serde_json::json!({"offset": 16, "limit": 16, "query": "arrival", "sortBy": "RELEVANCE"})
+        );
+        assert!(
+            body["query"]
+                .as_str()
+                .unwrap()
+                .contains("SearchProductExplorer")
+        );
     }
 
     #[test]
