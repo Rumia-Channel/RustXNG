@@ -165,8 +165,13 @@ mod tests {
     use super::*;
 
     fn engine() -> Arc<Ipernity> {
-        Ipernity::from_config(&EngineConfig::new("ipernity", "ipernity", "ip", &["images"]))
-            .unwrap()
+        Ipernity::from_config(&EngineConfig::new(
+            "ipernity",
+            "ipernity",
+            "ip",
+            &["images"],
+        ))
+        .unwrap()
     }
 
     const FIXTURE: &str = r##"
@@ -200,7 +205,10 @@ mod tests {
                     result.metadata.get("resolution").map(String::as_str),
                     Some("240x180")
                 );
-                assert_eq!(result.published_date.as_deref(), Some("2023-11-14T22:13:20"));
+                assert_eq!(
+                    result.published_date.as_deref(),
+                    Some("2023-11-14T22:13:20")
+                );
             }
             _ => panic!("expected a picture"),
         }

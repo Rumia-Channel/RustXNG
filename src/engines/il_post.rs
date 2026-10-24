@@ -53,7 +53,7 @@ impl Engine for IlPost {
                 _ => {
                     return Err(EngineError::Message(
                         "il_post supports only the month and year time ranges".into(),
-                    ))
+                    ));
                 }
             };
             filters.push(';');
@@ -89,8 +89,8 @@ impl Engine for IlPost {
             if url.is_empty() || title.is_empty() || !is_http_url(&url) {
                 continue;
             }
-            let mut builder = ResultBuilder::new(url, title)
-                .content(strip_tags(&json_str(item, "summary")));
+            let mut builder =
+                ResultBuilder::new(url, title).content(strip_tags(&json_str(item, "summary")));
             let image = json_str(item, "image");
             if is_http_url(&image) {
                 builder = builder.thumbnail(image);
@@ -139,7 +139,7 @@ mod tests {
         let mut query = Query::parse("elezioni", &crate::engine::EngineRegistry::default(), &[]);
         query.time_range = Some(TimeRange::Year);
         let request = engine().build_request(&query, 2).unwrap();
-        assert!(request.url.starts_with(SEARCH_API));
+        assert!(request.url.starts_with(SEARCH_API.trim_end_matches('/')));
         assert!(request.url.contains("qs=elezioni"));
         assert!(request.url.contains("pg=2"));
         assert!(

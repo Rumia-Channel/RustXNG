@@ -30,8 +30,11 @@ pub mod ahmia;
 pub mod alpinelinux;
 pub mod andisearch;
 pub mod annas_archive;
+pub mod ansa;
 pub mod apkmirror;
 pub mod apple_app_store;
+pub mod apple_maps;
+pub mod archlinux;
 pub mod artic;
 pub mod artstation;
 pub mod arxiv;
@@ -43,6 +46,7 @@ pub mod bing_images;
 pub mod bing_news;
 pub mod bing_videos;
 pub mod bitchute;
+pub mod boardreader;
 pub mod bpb;
 pub mod brave;
 pub mod braveapi;
@@ -61,11 +65,13 @@ pub mod dailymotion;
 pub mod deezer;
 pub mod destatis;
 pub mod deviantart;
+pub mod devicons;
 pub mod dictzone;
 pub mod discourse;
 pub mod docker_hub;
 pub mod dogpile;
 pub mod duckduckgo;
+pub mod duckduckgo_definitions;
 pub mod duckduckgo_extra;
 pub mod duckduckgo_web;
 pub mod duden;
@@ -92,29 +98,44 @@ pub mod google;
 pub mod google_images;
 pub mod google_news;
 pub mod google_play;
+pub mod google_scholar;
+pub mod google_videos;
+pub mod grokipedia;
 pub mod hackernews;
 pub mod hex;
 pub mod huggingface;
 pub mod iconify;
+pub mod il_post;
 pub mod imdb;
 pub mod imgur;
 pub mod invidious;
+pub mod ipernity;
 pub mod iqiyi;
+pub mod iseek;
 pub mod jina;
 pub mod jisho;
 pub mod json_engine;
+pub mod keenable;
 pub mod kickass;
 pub mod lemmy;
 pub mod lib_rs;
+pub mod libretranslate;
+pub mod lingva;
 pub mod luxxle;
+pub mod magnific;
 pub mod marginalia;
 pub mod mastodon;
+pub mod mediathekviewweb;
 pub mod mediawiki;
 pub mod metacpan;
+pub mod microsoft_learn;
 pub mod mixcloud;
 pub mod mojeek;
+pub mod moviepilot;
+pub mod mozhi;
 pub mod mwmbl;
 pub mod naver;
+pub mod neocities;
 pub mod neosearch;
 pub mod niconico;
 pub mod nine_gag;
@@ -132,12 +153,16 @@ pub mod pdbe;
 pub mod peertube;
 pub mod pexels;
 pub mod photon;
+pub mod picjumbo;
 pub mod pinterest;
 pub mod piped;
 pub mod piratebay;
 pub mod pixabay;
 pub mod pixiv;
 pub mod pkg_go_dev;
+pub mod podchaser;
+pub mod privacywall;
+pub mod public_domain_image_archive;
 pub mod pubmed;
 pub mod pypi;
 pub mod quark;
@@ -145,8 +170,15 @@ pub mod qwant;
 pub mod r1337x;
 pub mod r360search;
 pub mod r360search_videos;
+pub mod radio_browser;
 pub mod repology;
+pub mod reuters;
+pub mod rottentomatoes;
 pub mod rumble;
+pub mod s1search;
+pub mod s1search_rampjs;
+pub mod scanr_structures;
+pub mod searchrockit;
 pub mod semantic_scholar;
 pub mod sepiasearch;
 pub mod seznam;
@@ -350,6 +382,42 @@ pub fn build(config: &EngineConfig) -> Result<EngineHandle, String> {
         "nvd" => nvd::Nvd::from_config(config)?,
         "pdbe" => pdbe::Pdbe::from_config(config)?,
         "torznab" => torznab::Torznab::from_config(config)?,
+        "ansa" => ansa::Ansa::from_config(config)?,
+        "apple_maps" => apple_maps::AppleMaps::from_config(config)?,
+        "archlinux" => archlinux::Archlinux::from_config(config)?,
+        "boardreader" => boardreader::Boardreader::from_config(config)?,
+        "devicons" => devicons::Devicons::from_config(config)?,
+        "duckduckgo_definitions" => {
+            duckduckgo_definitions::DuckDuckGoDefinitions::from_config(config)?
+        }
+        "google_scholar" => google_scholar::GoogleScholar::from_config(config)?,
+        "google_videos" => google_videos::GoogleVideos::from_config(config)?,
+        "grokipedia" => grokipedia::Grokipedia::from_config(config)?,
+        "il_post" => il_post::IlPost::from_config(config)?,
+        "ipernity" => ipernity::Ipernity::from_config(config)?,
+        "lingva" => lingva::Lingva::from_config(config)?,
+        "magnific" => magnific::Magnific::from_config(config)?,
+        "mediathekviewweb" => mediathekviewweb::Mediathekviewweb::from_config(config)?,
+        "microsoft_learn" => microsoft_learn::MicrosoftLearn::from_config(config)?,
+        "moviepilot" => moviepilot::Moviepilot::from_config(config)?,
+        "neocities" => neocities::Neocities::from_config(config)?,
+        "picjumbo" => picjumbo::Picjumbo::from_config(config)?,
+        "podchaser" => podchaser::Podchaser::from_config(config)?,
+        "reuters" => reuters::Reuters::from_config(config)?,
+        "rottentomatoes" => rottentomatoes::RottenTomatoes::from_config(config)?,
+        "s1search" => s1search::S1Search::from_config(config)?,
+        "s1search_rampjs" => s1search_rampjs::S1SearchRampjs::from_config(config)?,
+        "scanr_structures" => scanr_structures::ScanrStructures::from_config(config)?,
+        "iseek" => iseek::Iseek::from_config(config)?,
+        "keenable" => keenable::Keenable::from_config(config)?,
+        "libretranslate" => libretranslate::LibreTranslate::from_config(config)?,
+        "mozhi" => mozhi::Mozhi::from_config(config)?,
+        "privacywall" => privacywall::Privacywall::from_config(config)?,
+        "public_domain_image_archive" => {
+            public_domain_image_archive::PublicDomainImageArchive::from_config(config)?
+        }
+        "radio_browser" => radio_browser::RadioBrowser::from_config(config)?,
+        "searchrockit" => searchrockit::Searchrockit::from_config(config)?,
         other => {
             return Err(format!(
                 "engine {:?} uses the unknown engine type {other:?}",

@@ -44,7 +44,11 @@ impl Engine for GoogleVideos {
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
         let language = locale_language(&query.locale);
-        let language = if language == "all" { "en".to_string() } else { language };
+        let language = if language == "all" {
+            "en".to_string()
+        } else {
+            language
+        };
         let mut pairs = vec![
             ("q", query.query_text()),
             ("sca_esv", "1".to_string()),
@@ -67,7 +71,11 @@ impl Engine for GoogleVideos {
             pairs.push(("tbs", format!("qdr:{value}")));
         }
         if query.safesearch > 0 {
-            let safe = if query.safesearch == 1 { "medium" } else { "high" };
+            let safe = if query.safesearch == 1 {
+                "medium"
+            } else {
+                "high"
+            };
             pairs.push(("safe", safe.to_string()));
         }
         Ok(
@@ -192,11 +200,17 @@ mod tests {
             first.thumbnail.as_deref(),
             Some("https://i.ytimg.com/vi/abc/hqdefault.jpg")
         );
-        assert_eq!(first.metadata.get("length").map(String::as_str), Some("03:12"));
+        assert_eq!(
+            first.metadata.get("length").map(String::as_str),
+            Some("03:12")
+        );
         let EngineItem::Result(second) = &items[1] else {
             panic!("expected a video")
         };
-        assert_eq!(second.metadata.get("length").map(String::as_str), Some("01:02:03"));
+        assert_eq!(
+            second.metadata.get("length").map(String::as_str),
+            Some("01:02:03")
+        );
     }
 
     #[test]
@@ -205,7 +219,11 @@ mod tests {
         query.time_range = Some(TimeRange::Week);
         query.safesearch = 2;
         let request = engine().build_request(&query, 2).unwrap();
-        assert!(request.url.starts_with("https://www.google.com/wml/search?"));
+        assert!(
+            request
+                .url
+                .starts_with("https://www.google.com/wml/search?")
+        );
         assert!(request.url.contains("q=rust"));
         assert!(request.url.contains("hl=en"));
         assert!(request.url.contains("tbm=vid"));

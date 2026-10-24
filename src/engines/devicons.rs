@@ -4,7 +4,9 @@
 use std::sync::Arc;
 
 use crate::engine::util::*;
-use crate::engine::{Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse};
+use crate::engine::{
+    Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse,
+};
 use crate::query::Query;
 use crate::results::Template;
 use crate::settings::EngineConfig;
@@ -59,7 +61,9 @@ pub struct Devicons {
 
 impl Devicons {
     pub fn from_config(config: &EngineConfig) -> Result<Arc<Self>, String> {
-        Ok(Arc::new(Self { meta: EngineMeta::from_config(config, DEFAULTS) }))
+        Ok(Arc::new(Self {
+            meta: EngineMeta::from_config(config, DEFAULTS),
+        }))
     }
 }
 
@@ -69,7 +73,12 @@ impl Engine for Devicons {
     }
 
     fn build_request(&self, _query: &Query, _pageno: u32) -> Result<EngineRequest, EngineError> {
-        let base = self.meta.base_url.as_deref().unwrap_or(CDN_BASE).trim_end_matches('/');
+        let base = self
+            .meta
+            .base_url
+            .as_deref()
+            .unwrap_or(CDN_BASE)
+            .trim_end_matches('/');
         Ok(EngineRequest::get(format!("{base}/devicon.json")).header("Accept", "application/json"))
     }
 
@@ -82,8 +91,18 @@ impl Engine for Devicons {
         let Some(icons) = json.as_array() else {
             return Ok(Vec::new());
         };
-        let base = self.meta.base_url.as_deref().unwrap_or(CDN_BASE).trim_end_matches('/');
-        let parts: Vec<String> = query.query_text().to_lowercase().split(' ').map(str::to_string).collect();
+        let base = self
+            .meta
+            .base_url
+            .as_deref()
+            .unwrap_or(CDN_BASE)
+            .trim_end_matches('/');
+        let parts: Vec<String> = query
+            .query_text()
+            .to_lowercase()
+            .split(' ')
+            .map(str::to_string)
+            .collect();
         let mut results = Vec::new();
         for icon in icons {
             if !is_match(icon, &parts) {
@@ -153,7 +172,10 @@ mod tests {
         assert_eq!(result.content, "Base color: #dea584");
         assert_eq!(result.img_src.as_deref(), Some(result.url.as_str()));
         assert_eq!(result.template, Template::Images);
-        assert_eq!(result.metadata.get("img_format").map(String::as_str), Some("SVG"));
+        assert_eq!(
+            result.metadata.get("img_format").map(String::as_str),
+            Some("SVG")
+        );
     }
 
     #[test]

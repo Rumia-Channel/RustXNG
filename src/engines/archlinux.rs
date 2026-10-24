@@ -110,10 +110,23 @@ fn wiki_endpoint(meta: &EngineMeta, query: &Query) -> (String, &'static str, &'s
         return (format!("{base}/index.php"), "Special:Search", "", false);
     }
     let language = locale_language(&query.locale);
-    let language = if language == "all" { "en".to_string() } else { language };
+    let language = if language == "all" {
+        "en".to_string()
+    } else {
+        language
+    };
     let (netloc, title) = wiki_target(&language);
-    let path = if netloc == "wiki.archlinuxcn.org" { "/wzh/index.php" } else { "/index.php" };
-    (format!("https://{netloc}{path}"), title, wiki_language(&language), netloc == MAIN_WIKI)
+    let path = if netloc == "wiki.archlinuxcn.org" {
+        "/wzh/index.php"
+    } else {
+        "/index.php"
+    };
+    (
+        format!("https://{netloc}{path}"),
+        title,
+        wiki_language(&language),
+        netloc == MAIN_WIKI,
+    )
 }
 
 /// Upstream traits.custom: the wiki host and the translated search title.
@@ -129,16 +142,44 @@ fn wiki_target(language: &str) -> (&'static str, &'static str) {
 /// Upstream traits.languages: the wiki language shown for each locale.
 fn wiki_language(language: &str) -> &'static str {
     const NAMES: &[(&str, &str)] = &[
-        ("ar", "العربية"), ("bg", "Български"), ("bs", "Bosanski"), ("ca", "Català"),
-        ("cs", "Čeština"), ("da", "Dansk"), ("de", "Deutsch"), ("el", "Ελληνικά"),
-        ("en", "English"), ("es", "Español"), ("fi", "Suomi"), ("fr", "Français"),
-        ("he", "עברית"), ("hr", "Hrvatski"), ("hu", "Magyar"), ("id", "Bahasa Indonesia"),
-        ("it", "Italiano"), ("ja", "日本語"), ("ko", "한국어"), ("lt", "Lietuvių"),
-        ("lv", "Latviešu"), ("nl", "Nederlands"), ("pl", "Polski"), ("pt", "Português"),
-        ("ru", "Русский"), ("sk", "Slovenčina"), ("sr", "Српски / srpski"), ("sv", "Svenska"),
-        ("th", "ไทย"), ("tr", "Türkçe"), ("uk", "Українська"), ("zh", "中文（繁體）"),
+        ("ar", "العربية"),
+        ("bg", "Български"),
+        ("bs", "Bosanski"),
+        ("ca", "Català"),
+        ("cs", "Čeština"),
+        ("da", "Dansk"),
+        ("de", "Deutsch"),
+        ("el", "Ελληνικά"),
+        ("en", "English"),
+        ("es", "Español"),
+        ("fi", "Suomi"),
+        ("fr", "Français"),
+        ("he", "עברית"),
+        ("hr", "Hrvatski"),
+        ("hu", "Magyar"),
+        ("id", "Bahasa Indonesia"),
+        ("it", "Italiano"),
+        ("ja", "日本語"),
+        ("ko", "한국어"),
+        ("lt", "Lietuvių"),
+        ("lv", "Latviešu"),
+        ("nl", "Nederlands"),
+        ("pl", "Polski"),
+        ("pt", "Português"),
+        ("ru", "Русский"),
+        ("sk", "Slovenčina"),
+        ("sr", "Српски / srpski"),
+        ("sv", "Svenska"),
+        ("th", "ไทย"),
+        ("tr", "Türkçe"),
+        ("uk", "Українська"),
+        ("zh", "中文（繁體）"),
     ];
-    NAMES.iter().find(|(code, _)| *code == language).map(|(_, name)| *name).unwrap_or("English")
+    NAMES
+        .iter()
+        .find(|(code, _)| *code == language)
+        .map(|(_, name)| *name)
+        .unwrap_or("English")
 }
 
 fn page_size(meta: &EngineMeta) -> u32 {
@@ -163,7 +204,12 @@ mod tests {
 </ul></body></html>"##;
 
     fn engine() -> Arc<Archlinux> {
-        let config = EngineConfig::new("arch linux wiki", "archlinux", "al", &["it", "software wikis"]);
+        let config = EngineConfig::new(
+            "arch linux wiki",
+            "archlinux",
+            "al",
+            &["it", "software wikis"],
+        );
         Archlinux::from_config(&config).unwrap()
     }
 
@@ -179,7 +225,10 @@ mod tests {
         match &items[0] {
             EngineItem::Result(result) => {
                 assert_eq!(result.title, "Installation guide");
-                assert_eq!(result.url, "https://wiki.archlinux.org/index.php/Installation_guide");
+                assert_eq!(
+                    result.url,
+                    "https://wiki.archlinux.org/index.php/Installation_guide"
+                );
                 assert_eq!(result.content, "This article covers installing Arch Linux.");
             }
             _ => panic!("expected a result"),
@@ -189,7 +238,11 @@ mod tests {
     #[test]
     fn builds_the_paged_request() {
         let request = engine().build_request(&query(), 3).unwrap();
-        assert!(request.url.starts_with("https://wiki.archlinux.org/index.php?"));
+        assert!(
+            request
+                .url
+                .starts_with("https://wiki.archlinux.org/index.php?")
+        );
         assert!(request.url.contains("search=rust%20%28English%29"));
         assert!(request.url.contains("title=Special%3ASearch"));
         assert!(request.url.contains("limit=20"));
@@ -202,7 +255,11 @@ mod tests {
         let mut query = query();
         query.locale = "de-DE".to_string();
         let request = engine().build_request(&query, 1).unwrap();
-        assert!(request.url.starts_with("https://wiki.archlinux.de/index.php?"));
+        assert!(
+            request
+                .url
+                .starts_with("https://wiki.archlinux.de/index.php?")
+        );
         assert!(request.url.contains("title=Spezial%3ASuche"));
         // The German wiki is not the main wiki: no English suffix, no user agent.
         assert!(request.url.contains("search=rust&"));

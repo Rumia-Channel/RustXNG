@@ -46,7 +46,11 @@ impl Engine for AppleMaps {
 
     fn build_request(&self, query: &Query, _pageno: u32) -> Result<EngineRequest, EngineError> {
         let language = locale_language(&query.locale);
-        let language = if language == "all" { "en".to_string() } else { language };
+        let language = if language == "all" {
+            "en".to_string()
+        } else {
+            language
+        };
         let pairs = vec![
             ("q", query.query_text()),
             ("lang", language),
@@ -110,7 +114,13 @@ fn token(meta: &EngineMeta) -> Option<&str> {
 
 /// Upstream keeps the address as a structured object, we join its parts.
 fn address(item: &serde_json::Value) -> String {
-    let keys = ["thoroughfare", "subThoroughfare", "locality", "postCode", "country"];
+    let keys = [
+        "thoroughfare",
+        "subThoroughfare",
+        "locality",
+        "postCode",
+        "country",
+    ];
     keys.iter()
         .map(|key| json_str(item, key))
         .filter(|part| !part.is_empty())
@@ -154,7 +164,11 @@ mod tests {
     }
 
     fn query() -> Query {
-        Query::parse("eiffel tower", &crate::engine::EngineRegistry::default(), &[])
+        Query::parse(
+            "eiffel tower",
+            &crate::engine::EngineRegistry::default(),
+            &[],
+        )
     }
 
     fn meta(result: &crate::results::SearchResult, key: &str) -> String {
@@ -171,7 +185,10 @@ mod tests {
                 assert_eq!(result.title, "Eiffel Tower");
                 assert_eq!(result.url, "https://maps.apple.com/place?address=Paris");
                 assert_eq!(result.template, Template::Map);
-                assert_eq!(result.content, "Avenue Anatole France, 5, Paris, 75007, France");
+                assert_eq!(
+                    result.content,
+                    "Avenue Anatole France, 5, Paris, 75007, France"
+                );
                 assert_eq!(meta(result, "latitude"), "48.858");
                 assert_eq!(meta(result, "longitude"), "2.294");
                 assert_eq!(meta(result, "boundingbox"), "48.85,48.86,2.29,2.3");
@@ -188,7 +205,11 @@ mod tests {
         let mut query = query();
         query.locale = "it-IT".to_string();
         let request = engine().build_request(&query, 1).unwrap();
-        assert!(request.url.starts_with("https://api.apple-mapkit.com/v1/search?"));
+        assert!(
+            request
+                .url
+                .starts_with("https://api.apple-mapkit.com/v1/search?")
+        );
         assert!(request.url.contains("q=eiffel%20tower"));
         assert!(request.url.contains("lang=it"));
         assert!(request.url.contains("mkjsVersion=5.72.53"));

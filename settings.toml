@@ -1599,3 +1599,258 @@ name = "torznab"
 engine = "torznab"
 categories = ["files"]
 disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "ansa"
+engine = "ansa"
+shortcut = "ans"
+categories = ["news"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "apple_maps"
+engine = "apple_maps"
+shortcut = "apm"
+categories = ["map"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "archlinux"
+engine = "archlinux"
+shortcut = "al"
+categories = ["it", "software wikis"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "boardreader"
+engine = "boardreader"
+shortcut = "boa"
+categories = ["general", "social media"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "devicons"
+engine = "devicons"
+shortcut = "di"
+categories = ["images", "icons"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "duckduckgo_definitions"
+engine = "duckduckgo_definitions"
+shortcut = "ddd"
+categories = ["general"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "google_scholar"
+engine = "google_scholar"
+shortcut = "gos"
+categories = ["science", "scientific publications"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "google_videos"
+engine = "google_videos"
+shortcut = "gov"
+categories = ["videos", "web"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "grokipedia"
+engine = "grokipedia"
+shortcut = "gp"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "il_post"
+engine = "il_post"
+shortcut = "pst"
+categories = ["news"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "ipernity"
+engine = "ipernity"
+shortcut = "ip"
+categories = ["images"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "lingva"
+engine = "lingva"
+shortcut = "lv"
+categories = ["general", "translate"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "magnific"
+engine = "magnific"
+shortcut = "mag"
+categories = ["stock images"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "mediathekviewweb"
+engine = "mediathekviewweb"
+shortcut = "mvw"
+categories = ["videos"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "microsoft_learn"
+engine = "microsoft_learn"
+shortcut = "msl"
+categories = ["it"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "moviepilot"
+engine = "moviepilot"
+shortcut = "mp"
+categories = ["movies"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "neocities"
+engine = "neocities"
+shortcut = "nc"
+categories = ["general", "blogs"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "picjumbo"
+engine = "picjumbo"
+shortcut = "pj"
+categories = ["stock images"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "podchaser"
+engine = "podchaser"
+shortcut = "poc"
+categories = []
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "reuters"
+engine = "reuters"
+shortcut = "reuters"
+categories = ["news"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "rottentomatoes"
+engine = "rottentomatoes"
+shortcut = "rt"
+categories = ["movies"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "s1search"
+engine = "s1search"
+shortcut = "s1"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "s1search_rampjs"
+engine = "s1search_rampjs"
+shortcut = "s1j"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "scanr_structures"
+engine = "scanr_structures"
+shortcut = "scs"
+categories = ["science"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "iseek"
+engine = "iseek"
+shortcut = "isk"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "keenable"
+engine = "keenable"
+shortcut = "keen"
+categories = ["general"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "libretranslate"
+engine = "libretranslate"
+shortcut = "lt"
+categories = ["general", "translate"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "mozhi"
+engine = "mozhi"
+shortcut = "mz"
+categories = ["general", "translate"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "privacywall"
+engine = "privacywall"
+shortcut = "pw"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "public_domain_image_archive"
+engine = "public_domain_image_archive"
+shortcut = "pdia"
+categories = ["images"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "radio_browser"
+engine = "radio_browser"
+shortcut = "rb"
+categories = ["music", "radio"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "searchrockit"
+engine = "searchrockit"
+shortcut = "sr"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working

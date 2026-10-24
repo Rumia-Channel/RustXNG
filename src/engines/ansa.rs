@@ -52,10 +52,7 @@ impl Engine for Ansa {
             .unwrap_or(i64::from(PAGE_SIZE)) as u32;
         let mut pairs = vec![
             ("any", query.query_text()),
-            (
-                "start",
-                (pageno.saturating_sub(1) * page_size).to_string(),
-            ),
+            ("start", (pageno.saturating_sub(1) * page_size).to_string()),
             ("sort", "data:desc".to_string()),
         ];
         if let Some(days) = query.time_range.and_then(period_days) {

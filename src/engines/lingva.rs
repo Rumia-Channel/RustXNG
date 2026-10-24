@@ -2,8 +2,7 @@
 //!
 //! Lingva is an alternative front-end for Google Translate. Upstream is an
 //! online dictionary engine: the query starts with a from-to language pair
-//! such as en-de. Its translation result is rendered as a regular result
-//! here, because this port has no separate translation result type.
+//! such as en-de. Its translation result becomes a regular result here.
 
 // engine-id: lingva
 
@@ -212,11 +211,7 @@ mod tests {
     #[test]
     fn missing_translation_is_empty() {
         let response = EngineResponse::new(200, BASE_URL, b"{}".to_vec());
-        assert!(
-            engine()
-                .parse(&response, &query("en-de hello"))
-                .unwrap()
-                .is_empty()
-        );
+        let items = engine().parse(&response, &query("en-de hello")).unwrap();
+        assert!(items.is_empty());
     }
 }

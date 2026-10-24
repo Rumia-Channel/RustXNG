@@ -24,7 +24,6 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 };
 
 const BASE_URL: &str = "http://juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion";
-const PAGE_SIZE: u32 = 10;
 
 /// Ahmia, the onion search engine.
 pub struct Ahmia {
@@ -52,8 +51,7 @@ impl Engine for Ahmia {
             .unwrap_or(BASE_URL)
             .trim_end_matches('/');
         let mut pairs: Vec<(&str, String)> = vec![("q", query.query_text())];
-        // Upstream scrapes the anti bot token from the search form; here it is
-        // taken from the settings as a name:value pair.
+        // Upstream scrapes the token from the search form; settings can provide it.
         if let Some(token) = self.meta.opt_str("token") {
             if let Some((name, value)) = token.split_once(':') {
                 if !name.trim().is_empty() && !value.trim().is_empty() {
@@ -94,7 +92,7 @@ impl Engine for Ahmia {
             .meta
             .opt_i64("page_size")
             .filter(|value| *value > 0)
-            .unwrap_or(i64::from(PAGE_SIZE)) as usize;
+            .unwrap_or(10) as usize;
         let first = page_size * query.pageno.saturating_sub(1) as usize;
         let elements = select_elements(&html, "li.result")?;
         let mut results = Vec::new();
@@ -154,11 +152,8 @@ mod tests {
     fn engine_with(extra: &[(&str, &str)]) -> Arc<Ahmia> {
         let mut config = EngineConfig::new("ahmia", "ahmia", "", &["onions"]);
         for (key, value) in extra {
-            // numeric options are read with opt_i64, so store them as integers
-            let parsed = match value.parse::<i64>() {
-                Ok(number) => toml::Value::Integer(number),
-                Err(_) => toml::Value::String((*value).to_string()),
-            };
+            let number = value.parse::<i64>().ok().map(toml::Value::Integer);
+            let parsed = number.unwrap_or(toml::Value::String((*value).to_string()));
             config.extra.insert((*key).to_string(), parsed);
         }
         Ahmia::from_config(&config).unwrap()
@@ -205,23 +200,16 @@ mod tests {
     fn builds_the_search_and_time_range_request() {
         let mut query = query();
         query.time_range = Some(TimeRange::Week);
-        let request = engine_with(&[("token", "csrf:abc123")])
-            .build_request(&query, 1)
-            .unwrap();
-        assert_eq!(
-            request.url,
-            "http://juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion/search/?q=rust&csrf=abc123&d=7"
-        );
+        let engine = engine_with(&[("token", "csrf:abc123")]);
+        let request = engine.build_request(&query, 1).unwrap();
+        let expected = "http://juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion/search/?q=rust&csrf=abc123&d=7";
+        assert_eq!(request.url, expected);
     }
 
     #[test]
     fn missing_container_yields_no_results() {
         let response = EngineResponse::new(200, BASE_URL, b"<html></html>".to_vec());
-        assert!(
-            engine_with(&[])
-                .parse(&response, &query())
-                .unwrap()
-                .is_empty()
-        );
+        let items = engine_with(&[]).parse(&response, &query()).unwrap();
+        assert!(items.is_empty());
     }
 }

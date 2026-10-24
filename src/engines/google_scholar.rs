@@ -25,7 +25,6 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 
 const BASE_URL: &str = "https://scholar.google.com/scholar";
 
-/// Google Scholar, the scholarly literature index.
 pub struct GoogleScholar {
     meta: EngineMeta,
 }
@@ -45,8 +44,16 @@ impl Engine for GoogleScholar {
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
         let language = locale_language(&query.locale);
-        let hl = if language == "all" { "en".to_string() } else { language.clone() };
-        let lr = if language == "all" { String::new() } else { format!("lang_{language}") };
+        let hl = if language == "all" {
+            "en".to_string()
+        } else {
+            language.clone()
+        };
+        let lr = if language == "all" {
+            String::new()
+        } else {
+            format!("lang_{language}")
+        };
         let mut pairs = vec![
             ("q", query.query_text()),
             ("hl", hl),
@@ -86,9 +93,13 @@ impl Engine for GoogleScholar {
         }
         let mut items = Vec::new();
         for element in select_elements(&html, "div[data-rp]")? {
-            let Some(link) = child(element, "h3 a") else { continue };
+            let Some(link) = child(element, "h3 a") else {
+                continue;
+            };
             let title = text(link);
-            let Some(href) = attr(link, "href") else { continue };
+            let Some(href) = attr(link, "href") else {
+                continue;
+            };
             let Some(url) = absolute_url(&href, "https://scholar.google.com/") else {
                 continue;
             };
@@ -100,10 +111,16 @@ impl Engine for GoogleScholar {
             let content = text_of(element, "div.gs_rs").unwrap_or_default();
             let (authors, journal, publisher, published) =
                 parse_gs_a(&text_of(element, "div.gs_a").unwrap_or_default());
-            let publisher = if url.contains(publisher.as_str()) { String::new() } else { publisher };
+            let publisher = if url.contains(publisher.as_str()) {
+                String::new()
+            } else {
+                publisher
+            };
             let comments = children(element, "div.gs_fl a")
                 .into_iter()
-                .find(|anchor| attr(*anchor, "href").is_some_and(|href| href.starts_with("/scholar?cites=")))
+                .find(|anchor| {
+                    attr(*anchor, "href").is_some_and(|href| href.starts_with("/scholar?cites="))
+                })
                 .map(text)
                 .unwrap_or_default();
             let doc_url = attr_of(element, "div.gs_or_ggsm a", "href").unwrap_or_default();
@@ -160,7 +177,12 @@ fn parse_gs_a(value: &str) -> (Vec<String>, String, String, Option<String>) {
     }
     let year = journal_year[journal_year.len() - 1].trim();
     let digits = year.len() == 4 && year.chars().all(|c| c.is_ascii_digit());
-    (authors, journal, publisher, digits.then(|| year.to_string()))
+    (
+        authors,
+        journal,
+        publisher,
+        digits.then(|| year.to_string()),
+    )
 }
 
 #[cfg(test)]
@@ -173,8 +195,7 @@ mod tests {
     }
 
     const FIXTURE: &str = r##"<div data-rp="1"><h3 class="gs_rt"><a href="https://example.com/paper">Rust for systems</a></h3><div class="gs_a">Alice Smith, Bob Jones - Journal of Rust, 2023 - example.org</div><div class="gs_rs">A paper about <b>Rust</b> and safety.</div><div class="gs_fl"><a href="/scholar?cites=123">Cited by 7</a></div><div class="gs_or_ggsm"><a href="https://example.com/paper.pdf">PDF</a></div><span class="gs_ctg2">[PDF]</span></div>
-    <div data-rp="1"><h3 class="gs_rt">[ZITATION] Something</h3></div>
-    <div class="gs_qsuggest_wrap"><ul><li><a href="/scholar?q=rust">rust language</a></li></ul></div>
+    <div data-rp="1"><h3 class="gs_rt">[ZITATION] Something</h3></div><div class="gs_qsuggest_wrap"><ul><li><a href="/scholar?q=rust">rust language</a></li></ul></div>
     <div class="gs_r gs_pda"><a href="/scholar?q=rust">did you mean rust</a></div>"##;
 
     #[test]
@@ -196,8 +217,14 @@ mod tests {
             result.metadata.get("journal").map(String::as_str),
             Some("Journal of Rust")
         );
-        assert_eq!(result.metadata.get("publisher").map(String::as_str), Some("example.org"));
-        assert_eq!(result.metadata.get("comments").map(String::as_str), Some("Cited by 7"));
+        assert_eq!(
+            result.metadata.get("publisher").map(String::as_str),
+            Some("example.org")
+        );
+        assert_eq!(
+            result.metadata.get("comments").map(String::as_str),
+            Some("Cited by 7")
+        );
         assert_eq!(
             result.metadata.get("pdf_url").map(String::as_str),
             Some("https://example.com/paper.pdf")
@@ -212,9 +239,24 @@ mod tests {
         query.locale = "en-US".to_string();
         query.time_range = Some(crate::query::TimeRange::Year);
         let request = engine().build_request(&query, 2).unwrap();
-        assert!(request.url.starts_with("https://scholar.google.com/scholar?"));
-        for part in ["q=rust", "hl=en", "lr=lang_en", "start=10", "as_sdt=2007", "as_vis=0"] {
-            assert!(request.url.contains(part), "missing {part} in {}", request.url);
+        assert!(
+            request
+                .url
+                .starts_with("https://scholar.google.com/scholar?")
+        );
+        for part in [
+            "q=rust",
+            "hl=en",
+            "lr=lang_en",
+            "start=10",
+            "as_sdt=2007",
+            "as_vis=0",
+        ] {
+            assert!(
+                request.url.contains(part),
+                "missing {part} in {}",
+                request.url
+            );
         }
         assert!(request.url.contains("as_ylo="));
     }

@@ -153,9 +153,10 @@ mod tests {
             "boa",
             &["general", "social media"],
         );
-        config
-            .extra
-            .insert("session_id".to_string(), toml::Value::String("abc123".to_string()));
+        config.extra.insert(
+            "session_id".to_string(),
+            toml::Value::String("abc123".to_string()),
+        );
         Boardreader::from_config(&config).unwrap()
     }
 
@@ -174,7 +175,10 @@ mod tests {
                 assert_eq!(result.content, "Tokio runtime");
                 assert_eq!(result.url, "https://example.com/threads/1");
                 assert_eq!(result.author.as_deref(), Some("alice"));
-                assert_eq!(result.published_date.as_deref(), Some("2024-05-01T10:00:00"));
+                assert_eq!(
+                    result.published_date.as_deref(),
+                    Some("2024-05-01T10:00:00")
+                );
             }
             _ => panic!("expected a result"),
         }
