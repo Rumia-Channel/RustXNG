@@ -184,11 +184,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Never overwrite a published asset: a rebuild can differ byte for
-          # byte, and replacing it would invalidate downloaded checksums.
+          # Never overwrite a published asset: a rebuild differs byte for byte,
+          # and replacing it would invalidate every checksum already handed out.
+          # An asset that is already published keeps its bytes; its sidecar is
+          # regenerated from those bytes so the pair still agrees.
           existing="$RUNNER_TEMP/existing"
           mkdir -p "$existing"
-          if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/have.txt" 2>/dev/null; then :; else : > "$RUNNER_TEMP/have.txt"; fi
+          if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/have.txt" 2>/dev/null; then
+            gh release download "$RELEASE_TAG" --dir "$existing" >/dev/null
+          else
+            : > "$RUNNER_TEMP/have.txt"
+          fi
+          for file in dist/*; do
+            name="$(basename "$file")"
+            case "$name" in *.sha256) continue ;; esac
+            if grep -qxF "$name" "$RUNNER_TEMP/have.txt"; then
+              echo "keep published bytes: $name"
+              cp "$existing/$name" "dist/$name"
+              ( cd dist && sha256sum "$name" > "$name.sha256" )
+            fi
+          done
           pending=()
           for file in dist/*; do
             name="$(basename "$file")"
@@ -220,4 +235,10 @@ jobs:
             fi
           done
           cat "$RUNNER_TEMP/published.txt"
+          # Prove the published bytes match the published checksums, including
+          # the assets this run did not build (an earlier upload).
+          verify="$RUNNER_TEMP/verify"
+          mkdir -p "$verify"
+          gh release download "$RELEASE_TAG" --dir "$verify" --clobber
+          ( cd "$verify" && sha256sum --check ./*.sha256 )
           exit "$missing"
