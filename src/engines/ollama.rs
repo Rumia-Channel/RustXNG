@@ -6,7 +6,9 @@
 use std::sync::Arc;
 
 use crate::engine::util::*;
-use crate::engine::{Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse};
+use crate::engine::{
+    Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse,
+};
 use crate::query::Query;
 use crate::settings::EngineConfig;
 
@@ -52,10 +54,18 @@ impl Engine for Ollama {
 
     fn build_request(&self, query: &Query, _pageno: u32) -> Result<EngineRequest, EngineError> {
         let pairs = vec![("q", query.query_text())];
-        Ok(EngineRequest::get(format!("{}/search?{}", self.base_url(), query_string(&pairs))))
+        Ok(EngineRequest::get(format!(
+            "{}/search?{}",
+            self.base_url(),
+            query_string(&pairs)
+        )))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let html = response.html()?;
         let base = self.base_url();
         let mut results = Vec::new();
@@ -72,7 +82,9 @@ impl Engine for Ollama {
             }
             let mut builder = ResultBuilder::new(url, title)
                 .content(text_of(element, CONTENT).unwrap_or_default());
-            if let Some(published) = attr_of(element, PUBLISHED, "title").and_then(|value| date(&value)) {
+            if let Some(published) =
+                attr_of(element, PUBLISHED, "title").and_then(|value| date(&value))
+            {
                 builder = builder.published_date(published);
             }
             results.push(builder.build());
@@ -84,7 +96,10 @@ impl Engine for Ollama {
 /// Upstream parses "%b %d, %Y %I:%M %p %Z"; the zone suffix is optional here.
 fn date(value: &str) -> Option<String> {
     let value = value.trim();
-    let head = value.rsplit_once(' ').map(|(head, _zone)| head).unwrap_or(value);
+    let head = value
+        .rsplit_once(' ')
+        .map(|(head, _zone)| head)
+        .unwrap_or(value);
     for candidate in [value, head] {
         if let Ok(parsed) = chrono::NaiveDateTime::parse_from_str(candidate, "%b %d, %Y %I:%M %p") {
             return Some(parsed.format("%Y-%m-%dT%H:%M:%S").to_string());
@@ -121,11 +136,16 @@ mod tests {
         let response = EngineResponse::new(200, BASE_URL, html.as_bytes().to_vec());
         let items = engine().parse(&response, &query("llama")).unwrap();
         assert_eq!(items.len(), 1);
-        let EngineItem::Result(result) = &items[0] else { panic!("expected a result") };
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(result.url, "https://ollama.com/library/llama3.2");
         assert_eq!(result.title, "llama3.2");
         assert_eq!(result.content, "Meta's Llama 3.2 model");
-        assert_eq!(result.published_date.as_deref(), Some("2026-10-24T11:00:00"));
+        assert_eq!(
+            result.published_date.as_deref(),
+            Some("2026-10-24T11:00:00")
+        );
     }
 
     #[test]

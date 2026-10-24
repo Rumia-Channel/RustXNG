@@ -2059,3 +2059,132 @@ categories = ["general"]
 paging = true
 time_range_support = true
 disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "exaapi"
+engine = "exaapi"
+shortcut = "exa"
+categories = ["general", "web"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "freesound"
+engine = "freesound"
+shortcut = "fnd"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "google_cse"
+engine = "google_cse"
+shortcut = "goc"
+categories = ["general", "web"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "kagi"
+engine = "kagi"
+shortcut = "kg"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "ollama"
+engine = "ollama"
+shortcut = "ollama"
+categories = ["it", "repos"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "translated"
+engine = "translated"
+shortcut = "tl"
+categories = ["general", "translate"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "wttr"
+engine = "wttr"
+shortcut = "wttr"
+categories = ["weather"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "yacy"
+engine = "yacy"
+shortcut = "ya"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "yahoo_news"
+engine = "yahoo_news"
+shortcut = "yhn"
+categories = ["news"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "azure"
+engine = "azure"
+shortcut = "az"
+categories = ["it", "cloud"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "meilisearch"
+engine = "meilisearch"
+shortcut = "mes"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "solr"
+engine = "solr"
+shortcut = "slr"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "elasticsearch"
+engine = "elasticsearch"
+shortcut = "els"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "yandex_api"
+engine = "yandex_api"
+shortcut = "yandex"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "duckduckgo_weather"
+engine = "duckduckgo_weather"
+categories = ["weather"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "yandex_music"
+engine = "yandex_music"
+categories = ["music"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "zlibrary"
+engine = "zlibrary"
+categories = ["files", "books"]
+paging = true
+disabled = true  # unverified; remove when confirmed working

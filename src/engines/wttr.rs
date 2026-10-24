@@ -27,7 +27,8 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 
 const BASE_URL: &str = "https://wttr.in";
 const COMPASS_POINTS: [&str; 16] = [
-    "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",
+    "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW",
+    "NNW",
 ];
 
 /// wttr.in, the weather forecast service.
@@ -87,7 +88,12 @@ impl Engine for Wttr {
     }
 
     fn build_request(&self, query: &Query, _pageno: u32) -> Result<EngineRequest, EngineError> {
-        let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL).trim_end_matches('/');
+        let base = self
+            .meta
+            .base_url
+            .as_deref()
+            .unwrap_or(BASE_URL)
+            .trim_end_matches('/');
         let language = locale_language(&query.engine_language());
         Ok(EngineRequest::get(format!(
             "{base}/{}?format=j1&lang={}",
@@ -115,9 +121,17 @@ impl Engine for Wttr {
         if temperature.is_empty() {
             return Ok(Vec::new());
         }
-        let location = self.meta.opt_str("location").map(str::to_string).unwrap_or_else(|| query.query_text());
+        let location = self
+            .meta
+            .opt_str("location")
+            .map(str::to_string)
+            .unwrap_or_else(|| query.query_text());
         let location = location.trim();
-        let location = if location.is_empty() { "wttr.in" } else { location };
+        let location = if location.is_empty() {
+            "wttr.in"
+        } else {
+            location
+        };
         let mut parts = vec![
             format!("{location}: {temperature} °C"),
             condition(&json_str(current, "weatherCode")).to_string(),
@@ -174,7 +188,10 @@ mod tests {
 
     fn engine() -> Arc<Wttr> {
         let mut config = EngineConfig::new("wttr.in", "wttr", "wttr", &["weather"]);
-        config.extra.insert("location".to_string(), toml::Value::String("Berlin".to_string()));
+        config.extra.insert(
+            "location".to_string(),
+            toml::Value::String("Berlin".to_string()),
+        );
         Wttr::from_config(&config).expect("wttr engine")
     }
 
@@ -208,9 +225,19 @@ mod tests {
     #[test]
     fn a_missing_container_is_empty() {
         let response = EngineResponse::new(200, BASE_URL, b"{}".to_vec());
-        assert!(engine().parse(&response, &query("berlin")).unwrap().is_empty());
+        assert!(
+            engine()
+                .parse(&response, &query("berlin"))
+                .unwrap()
+                .is_empty()
+        );
         let response = EngineResponse::new(404, BASE_URL, b"{}".to_vec());
-        assert!(engine().parse(&response, &query("berlin")).unwrap().is_empty());
+        assert!(
+            engine()
+                .parse(&response, &query("berlin"))
+                .unwrap()
+                .is_empty()
+        );
         assert_eq!(compass("0"), Some("N"));
         assert_eq!(compass("180"), Some("S"));
         assert_eq!(compass("not a number"), None);

@@ -24,7 +24,7 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 
 const BASE_URL: &str = "https://xq-api.voidlinux.org";
 const PKG_REPO_URL: &str = "https://github.com/void-linux/void-packages";
-/// Upstream's ARCH_RE, longest first so the -musl variants win.
+/// Upstream's ARCH_RE alternatives, matched as whole query tokens.
 const ARCHES: &str =
     "aarch64-musl armv6l-musl armv7l-musl x86_64-musl aarch64 armv6l armv7l i686 x86_64";
 
@@ -106,7 +106,9 @@ impl Engine for VoidLinux {
             let version = format!("v{}_{}", json_str(item, "version"), revision);
             let repository = json_str(item, "repository");
             let content = format!("{} - {}", json_str(item, "short_desc"), size);
-            let existing = packages.iter_mut().position(|(url, _)| url == &pkg_url);
+            let existing = packages
+                .iter_mut()
+                .position(|(url, _)| url.as_str() == pkg_url.as_str());
             match existing {
                 Some(index) => {
                     let package = &mut packages[index].1;

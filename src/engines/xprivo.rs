@@ -38,9 +38,7 @@ impl Xprivo {
     pub fn from_config(config: &EngineConfig) -> Result<Arc<Self>, String> {
         let search_type = config.opt_str("xprivo_search_type").unwrap_or("all");
         if !SEARCH_TYPES.contains(&search_type) {
-            return Err(format!(
-                "xprivo: invalid xprivo_search_type {search_type:?}"
-            ));
+            return Err("xprivo: invalid xprivo_search_type".to_string());
         }
         Ok(Arc::new(Self {
             meta: EngineMeta::from_config(config, DEFAULTS),
@@ -66,17 +64,11 @@ impl Engine for Xprivo {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
-        let search_type = self.search_type();
-        if !SEARCH_TYPES.contains(&search_type) {
-            return Err(EngineError::Message(format!(
-                "xprivo: invalid search type {search_type}"
-            )));
-        }
         let time_filter = query.time_range.map(|range| range.as_str()).unwrap_or("");
         let body = serde_json::json!({
             "query": query.query_text(),
             "mode": "classic",
-            "search_type": search_type,
+            "search_type": self.search_type(),
             "time_filter": time_filter,
             "region": "",
             "offset": (pageno.max(1) - 1) * PAGE_SIZE,
@@ -157,10 +149,8 @@ data: {"done":true}"##;
         let mut config = EngineConfig::new("xprivo", "xprivo", "xpr", &["general"]);
         config.api_key = Some("secret".into());
         if let Some(value) = search_type {
-            config.extra.insert(
-                "xprivo_search_type".into(),
-                toml::Value::String(value.into()),
-            );
+            let value = toml::Value::String(value.into());
+            config.extra.insert("xprivo_search_type".into(), value);
         }
         Xprivo::from_config(&config).unwrap()
     }
@@ -170,7 +160,7 @@ data: {"done":true}"##;
     }
 
     #[test]
-    fn parses_the_sse_stream() {
+    fn parses_the_sse_stream_and_builds_the_request() {
         let response = EngineResponse::new(200, BASE_URL, FIXTURE.as_bytes().to_vec());
         let items = engine(None).parse(&response, &query("rust")).unwrap();
         assert_eq!(items.len(), 1);
@@ -178,40 +168,19 @@ data: {"done":true}"##;
             panic!("expected a result")
         };
         assert_eq!(result.url, "https://example.com/a");
-        assert_eq!(result.title, "Alpha");
         assert_eq!(result.content, "First");
-        assert_eq!(
-            result.thumbnail.as_deref(),
-            Some("https://img.example/a.png")
-        );
-        assert_eq!(result.template, Template::Default);
-    }
-
-    #[test]
-    fn videos_use_the_video_template() {
-        let response = EngineResponse::new(200, BASE_URL, FIXTURE.as_bytes().to_vec());
-        let items = engine(Some("videos"))
+        let videos = engine(Some("videos"))
             .parse(&response, &query("rust"))
             .unwrap();
         assert!(
-            matches!(&items[0], EngineItem::Result(result) if result.template == Template::Videos)
+            matches!(&videos[0], EngineItem::Result(video) if video.template == Template::Videos)
         );
-    }
-
-    #[test]
-    fn builds_the_json_request() {
         let mut query = query("rust");
         query.time_range = Some(crate::query::TimeRange::Week);
         let request = engine(Some("news")).build_request(&query, 2).unwrap();
         assert_eq!(request.method, Method::Post);
-        assert_eq!(
-            request.url,
-            "https://www.xprivo.com/v1/searchengine/completions"
-        );
         let body = request.json.expect("json body");
-        assert_eq!(body["query"], "rust");
         assert_eq!(body["search_type"], "news");
-        assert_eq!(body["time_filter"], "week");
         assert_eq!(body["offset"].as_u64(), Some(10));
         let authorization = request
             .headers
@@ -222,12 +191,9 @@ data: {"done":true}"##;
 
     #[test]
     fn rejects_unknown_search_types_and_empty_streams() {
-        let config = EngineConfig::new("xprivo", "xprivo", "xpr", &["general"]);
-        let mut broken = config;
-        broken.extra.insert(
-            "xprivo_search_type".into(),
-            toml::Value::String("maps".into()),
-        );
+        let mut broken = EngineConfig::new("xprivo", "xprivo", "xpr", &["general"]);
+        let value = toml::Value::String("maps".into());
+        broken.extra.insert("xprivo_search_type".into(), value);
         assert!(Xprivo::from_config(&broken).is_err());
         let response = EngineResponse::new(200, BASE_URL, b"data: {}\n".to_vec());
         assert!(

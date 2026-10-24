@@ -48,7 +48,12 @@ impl Translated {
     }
 
     fn api_url(&self) -> String {
-        self.meta.base_url.as_deref().unwrap_or(API_URL).trim_end_matches('/').to_string()
+        self.meta
+            .base_url
+            .as_deref()
+            .unwrap_or(API_URL)
+            .trim_end_matches('/')
+            .to_string()
     }
 }
 
@@ -57,7 +62,10 @@ fn is_http_url(url: &str) -> bool {
 }
 
 fn is_language_code(value: &str) -> bool {
-    value.len() == 2 && value.chars().all(|character| character.is_ascii_alphabetic())
+    value.len() == 2
+        && value
+            .chars()
+            .all(|character| character.is_ascii_alphabetic())
 }
 
 /// Upstream search syntax: a from-to pair followed by the text.
@@ -98,7 +106,12 @@ impl Engine for Translated {
             ("q", direction.text.clone()),
             ("langpair", format!("{}|{}", direction.from, direction.to)),
         ];
-        let key = self.meta.api_key.as_deref().map(str::trim).filter(|key| !key.is_empty());
+        let key = self
+            .meta
+            .api_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|key| !key.is_empty());
         if let Some(key) = key {
             pairs.push(("key", key.to_string()));
         }
@@ -132,7 +145,11 @@ impl Engine for Translated {
                 examples.push(example);
             }
         }
-        let locale = if query.locale.trim().is_empty() { "en" } else { query.locale.as_str() };
+        let locale = if query.locale.trim().is_empty() {
+            "en"
+        } else {
+            query.locale.as_str()
+        };
         let args: Vec<(&str, String)> = vec![
             ("q", direction.text.clone()),
             ("lang", locale.to_string()),
@@ -143,7 +160,10 @@ impl Engine for Translated {
         if !is_http_url(&link) {
             return Ok(Vec::new());
         }
-        let content = std::iter::once(translated).chain(examples).collect::<Vec<String>>().join(" ");
+        let content = std::iter::once(translated)
+            .chain(examples)
+            .collect::<Vec<String>>()
+            .join(" ");
         Ok(vec![
             ResultBuilder::new(link, direction.text)
                 .content(content)
@@ -179,7 +199,9 @@ mod tests {
     #[test]
     fn parses_a_translation_with_examples() {
         let response = EngineResponse::new(200, API_URL, FIXTURE.as_bytes().to_vec());
-        let items = engine().parse(&response, &query("en-de hello world")).unwrap();
+        let items = engine()
+            .parse(&response, &query("en-de hello world"))
+            .unwrap();
         assert_eq!(items.len(), 1);
         match &items[0] {
             EngineItem::Result(result) => {
@@ -198,7 +220,9 @@ mod tests {
 
     #[test]
     fn builds_the_api_url_with_the_language_pair() {
-        let request = engine().build_request(&query("en-de hello world"), 1).unwrap();
+        let request = engine()
+            .build_request(&query("en-de hello world"), 1)
+            .unwrap();
         assert_eq!(
             request.url,
             "https://api.mymemory.translated.net/get?q=hello%20world&langpair=en%7Cde"
@@ -209,6 +233,11 @@ mod tests {
     #[test]
     fn an_empty_response_is_empty() {
         let response = EngineResponse::new(200, API_URL, b"{}".to_vec());
-        assert!(engine().parse(&response, &query("en-de hi")).unwrap().is_empty());
+        assert!(
+            engine()
+                .parse(&response, &query("en-de hi"))
+                .unwrap()
+                .is_empty()
+        );
     }
 }

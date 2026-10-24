@@ -168,9 +168,11 @@ mod tests {
             .build_request(&query("rain"), 2)
             .expect("request");
         assert_eq!(request.method, crate::engine::Method::Get);
-        assert!(request
-            .url
-            .starts_with("https://freesound.org/apiv2/search/text/?query=rain&page=2&fields="));
+        assert!(
+            request
+                .url
+                .starts_with("https://freesound.org/apiv2/search/text/?query=rain&page=2&fields=")
+        );
         assert!(request.url.ends_with("token=KEY"));
         assert!(matches!(
             engine(None).build_request(&query("rain"), 1),
@@ -202,7 +204,10 @@ mod tests {
                     result.metadata.get("audio_src").map(String::as_str),
                     Some("https://freesound.org/apiv2/sounds/123456/download/")
                 );
-                assert_eq!(result.content, "Recorded on a rainy night under a tin roof.");
+                assert_eq!(
+                    result.content,
+                    "Recorded on a rainy night under a tin roof."
+                );
             }
             _ => panic!("expected a result"),
         }
@@ -211,9 +216,11 @@ mod tests {
         assert_eq!(short_description(&long).chars().count(), MAX_DESCRIPTION);
         assert_eq!(iso_date("not a date"), "");
         let empty = EngineResponse::new(200, BASE_URL, b"{}".to_vec());
-        assert!(engine(Some("KEY"))
-            .parse(&empty, &query("rain"))
-            .expect("items")
-            .is_empty());
+        assert!(
+            engine(Some("KEY"))
+                .parse(&empty, &query("rain"))
+                .expect("items")
+                .is_empty()
+        );
     }
 }

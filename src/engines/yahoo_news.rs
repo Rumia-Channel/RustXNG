@@ -47,11 +47,20 @@ fn is_http_url(url: &str) -> bool {
 
 /// Remove the Yahoo tracking part of a redirect URL (upstream parse_url).
 fn parse_url(raw: &str) -> String {
-    let Some(marker) = raw.find("/RU=") else { return raw.to_string(); };
-    let Some(offset) = raw[marker + 1..].find("http") else { return raw.to_string(); };
+    let Some(marker) = raw.find("/RU=") else {
+        return raw.to_string();
+    };
+    let Some(offset) = raw[marker + 1..].find("http") else {
+        return raw.to_string();
+    };
     let start = marker + 1 + offset;
-    let end = ["/RS", "/RK"].iter().filter_map(|ending| raw.rfind(*ending)).min();
-    let Some(end) = end else { return raw.to_string(); };
+    let end = ["/RS", "/RK"]
+        .iter()
+        .filter_map(|ending| raw.rfind(*ending))
+        .min();
+    let Some(end) = end else {
+        return raw.to_string();
+    };
     if end <= start {
         return raw.to_string();
     }
@@ -116,7 +125,10 @@ impl Engine for YahooNews {
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
         let offset = (pageno.max(1) - 1) * 10 + 1;
         let pairs: Vec<(&str, String)> = vec![("p", query.query_text()), ("b", offset.to_string())];
-        Ok(EngineRequest::get(format!("{SEARCH_URL}?{}", query_string(&pairs))))
+        Ok(EngineRequest::get(format!(
+            "{SEARCH_URL}?{}",
+            query_string(&pairs)
+        )))
     }
 
     fn parse(
@@ -127,8 +139,12 @@ impl Engine for YahooNews {
         let html = parse_html(&response.text());
         let mut items = Vec::new();
         for element in select_elements(&html, "ol[class*='searchCenterMiddle'] li")? {
-            let Some(link) = child(element, "h4 a") else { continue; };
-            let Some(href) = attr(link, "href") else { continue; };
+            let Some(link) = child(element, "h4 a") else {
+                continue;
+            };
+            let Some(href) = attr(link, "href") else {
+                continue;
+            };
             let url = parse_url(&href);
             if !is_http_url(&url) {
                 continue;
@@ -183,7 +199,11 @@ mod tests {
 
     #[test]
     fn parses_news_results_and_suggestions() {
-        let response = EngineResponse::new(200, "https://news.search.yahoo.com/", FIXTURE.as_bytes().to_vec());
+        let response = EngineResponse::new(
+            200,
+            "https://news.search.yahoo.com/",
+            FIXTURE.as_bytes().to_vec(),
+        );
         let items = engine().parse(&response, &query("rust")).unwrap();
         assert_eq!(items.len(), 2);
         match &items[0] {
@@ -191,8 +211,16 @@ mod tests {
                 assert_eq!(result.url, "https://www.rust-lang.org/news");
                 assert_eq!(result.title, "Rust news");
                 assert_eq!(result.content, "A language empowering everyone.");
-                assert_eq!(result.thumbnail.as_deref(), Some("https://img.example.com/rust.jpg"));
-                assert!(result.published_date.as_deref().is_some_and(|value| !value.is_empty()));
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://img.example.com/rust.jpg")
+                );
+                assert!(
+                    result
+                        .published_date
+                        .as_deref()
+                        .is_some_and(|value| !value.is_empty())
+                );
             }
             other => panic!("expected a result, got {other:?}"),
         }
@@ -205,7 +233,10 @@ mod tests {
     #[test]
     fn builds_the_paged_url() {
         let request = engine().build_request(&query("rust news"), 3).unwrap();
-        assert_eq!(request.url, "https://news.search.yahoo.com/search?p=rust%20news&b=21");
+        assert_eq!(
+            request.url,
+            "https://news.search.yahoo.com/search?p=rust%20news&b=21"
+        );
     }
 
     #[test]
@@ -213,7 +244,10 @@ mod tests {
         assert!(relative_date("3 hours ago").is_some());
         assert!(relative_date("2 weeks ago").is_some());
         assert!(relative_date("yesterday").is_none());
-        assert_eq!(published_date("2024-05-01T12:00:00Z"), "2024-05-01T12:00:00+00:00");
+        assert_eq!(
+            published_date("2024-05-01T12:00:00Z"),
+            "2024-05-01T12:00:00+00:00"
+        );
         assert!(published_date("").is_empty());
     }
 }

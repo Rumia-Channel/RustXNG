@@ -39,7 +39,9 @@ impl Yacy {
         let meta = EngineMeta::from_config(config, DEFAULTS);
         let search_type = meta.opt_str("search_type").unwrap_or("text");
         if search_type != "text" && search_type != "image" {
-            return Err(format!("yacy: search_type {search_type:?} is not text or image"));
+            return Err(format!(
+                "yacy: search_type {search_type:?} is not text or image"
+            ));
         }
         Ok(Arc::new(Self { meta }))
     }
@@ -65,7 +67,9 @@ fn is_http_url(url: &str) -> bool {
 
 /// Upstream parses pubDate with dateutil and serialises ISO 8601.
 fn iso_date(value: &str) -> String {
-    chrono::DateTime::parse_from_rfc3339(value.trim()).map(|date| date.to_rfc3339()).unwrap_or_default()
+    chrono::DateTime::parse_from_rfc3339(value.trim())
+        .map(|date| date.to_rfc3339())
+        .unwrap_or_default()
 }
 
 impl Engine for Yacy {
@@ -84,11 +88,21 @@ impl Engine for Yacy {
             ("startRecord", offset.to_string()),
             ("maximumRecords", page_size.to_string()),
             ("contentdom", self.search_type().to_string()),
-            ("resource", self.meta.opt_str("search_mode").unwrap_or("global").to_string()),
+            (
+                "resource",
+                self.meta
+                    .opt_str("search_mode")
+                    .unwrap_or("global")
+                    .to_string(),
+            ),
         ];
         let language = query.engine_language();
         if language != "all" {
-            let code = language.split('-').next().unwrap_or_default().to_lowercase();
+            let code = language
+                .split('-')
+                .next()
+                .unwrap_or_default()
+                .to_lowercase();
             pairs.push(("lr", format!("lang_{code}")));
         }
         let url = format!("{base}/yacysearch.json?{}", query_string(&pairs));
@@ -110,7 +124,11 @@ impl Engine for Yacy {
         for item in items {
             if images {
                 let url = json_str(item, "url");
-                let url = if url.is_empty() { json_str(item, "link") } else { url };
+                let url = if url.is_empty() {
+                    json_str(item, "link")
+                } else {
+                    url
+                };
                 let title = json_str(item, "title");
                 if title.is_empty() || !is_http_url(&url) {
                     continue;
@@ -161,7 +179,10 @@ mod tests {
     fn engine(search_type: &str) -> Arc<Yacy> {
         let mut config = EngineConfig::new("yacy", "yacy", "ya", &["general"]);
         config.base_url = Some("https://yacy.example/".to_string());
-        config.extra.insert("search_type".to_string(), toml::Value::String(search_type.to_string()));
+        config.extra.insert(
+            "search_type".to_string(),
+            toml::Value::String(search_type.to_string()),
+        );
         Yacy::from_config(&config).expect("yacy engine")
     }
 
@@ -171,7 +192,8 @@ mod tests {
 
     #[test]
     fn parses_the_text_results() {
-        let response = EngineResponse::new(200, "https://yacy.example", FIXTURE.as_bytes().to_vec());
+        let response =
+            EngineResponse::new(200, "https://yacy.example", FIXTURE.as_bytes().to_vec());
         let items = engine("text").parse(&response, &query("rust")).unwrap();
         assert_eq!(items.len(), 1);
         match &items[0] {
@@ -179,7 +201,10 @@ mod tests {
                 assert_eq!(result.url, "https://example.com/a");
                 assert_eq!(result.title, "Example A");
                 assert_eq!(result.content, "hello world");
-                assert_eq!(result.published_date.as_deref(), Some("2024-05-01T12:00:00+00:00"));
+                assert_eq!(
+                    result.published_date.as_deref(),
+                    Some("2024-05-01T12:00:00+00:00")
+                );
             }
             other => panic!("expected a result, got {other:?}"),
         }
@@ -205,13 +230,19 @@ mod tests {
         match &items[0] {
             EngineItem::Result(result) => {
                 assert_eq!(result.template, Template::Images);
-                assert_eq!(result.img_src.as_deref(), Some("https://img.example.com/a.jpg"));
+                assert_eq!(
+                    result.img_src.as_deref(),
+                    Some("https://img.example.com/a.jpg")
+                );
             }
             other => panic!("expected a result, got {other:?}"),
         }
         let mut config = EngineConfig::new("yacy", "yacy", "ya", &["general"]);
         config.base_url = Some("https://yacy.example".to_string());
-        config.extra.insert("search_type".to_string(), toml::Value::String("video".to_string()));
+        config.extra.insert(
+            "search_type".to_string(),
+            toml::Value::String("video".to_string()),
+        );
         assert!(Yacy::from_config(&config).is_err());
     }
 }

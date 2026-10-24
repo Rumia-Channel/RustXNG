@@ -10,7 +10,7 @@ SearXNG（プライバシー重視のメタ検索エンジン）の振る舞い�
 
 - **上流互換の検索構文** — `!engine` / `!category` / `:lang` / `<timeout` / `!!` / `!!bang`（外部 bang 13,561 件）
 - **同じ集計ロジック** — 重複排除・スコア計算・カテゴリ別グループ化は `searx/results.py` と同一の式
-- **エンジン 113 設定 / 71 型** — 宣言的エンジン（`xpath` / `json_engine` / `mediawiki`）で上流設定をそのまま取込
+- **エンジン 226 型（上流 100%）** — 上流 `settings.yml` の 352 エントリ / 226 型をすべて実装。宣言的エンジン（`xpath` / `json_engine` / `mediawiki`）で上流設定をそのまま取込
 - **API 一式** — HTML / JSON / CSV / RSS、`/autocomplete`、`/config`、`/preferences`、`/stats`、`/metrics`、`/image_proxy`、`/favicon_proxy`、`/opensearch.xml`
 - **軽い** — 起動 0.03 秒 / 常駐 13 MiB（上流 SearXNG は 0.72 秒 / 118 MiB、同一マシン実測）
 

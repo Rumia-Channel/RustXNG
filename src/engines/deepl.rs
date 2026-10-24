@@ -138,6 +138,15 @@ mod tests {
         Query::parse(raw, &crate::engine::EngineRegistry::default(), &[])
     }
 
+    fn form_value(request: &EngineRequest, key: &str) -> String {
+        request
+            .form
+            .iter()
+            .find(|(name, _)| name == key)
+            .map(|(_, value)| value.clone())
+            .unwrap_or_default()
+    }
+
     #[test]
     fn builds_the_translation_form() {
         let request = engine(Some("KEY"))
@@ -145,21 +154,9 @@ mod tests {
             .expect("request");
         assert_eq!(request.method, crate::engine::Method::Post);
         assert_eq!(request.url, BASE_URL);
-        assert!(
-            request
-                .form
-                .contains(&("auth_key".to_string(), "KEY".to_string()))
-        );
-        assert!(
-            request
-                .form
-                .contains(&("text".to_string(), "hello world".to_string()))
-        );
-        assert!(
-            request
-                .form
-                .contains(&("target_lang".to_string(), "de".to_string()))
-        );
+        assert_eq!(form_value(&request, "auth_key"), "KEY");
+        assert_eq!(form_value(&request, "text"), "hello world");
+        assert_eq!(form_value(&request, "target_lang"), "de");
     }
 
     #[test]
@@ -167,26 +164,14 @@ mod tests {
         let request = engine(Some("KEY"))
             .build_request(&query("hello"), 1)
             .expect("request");
-        assert!(
-            request
-                .form
-                .contains(&("target_lang".to_string(), "en".to_string()))
-        );
-        assert!(
-            request
-                .form
-                .contains(&("text".to_string(), "hello".to_string()))
-        );
+        assert_eq!(form_value(&request, "target_lang"), "en");
+        assert_eq!(form_value(&request, "text"), "hello");
         let mut japanese = query("hello");
         japanese.locale = "ja-JP".to_string();
         let request = engine(Some("KEY"))
             .build_request(&japanese, 1)
             .expect("request");
-        assert!(
-            request
-                .form
-                .contains(&("target_lang".to_string(), "ja".to_string()))
-        );
+        assert_eq!(form_value(&request, "target_lang"), "ja");
     }
 
     #[test]
@@ -210,11 +195,7 @@ mod tests {
             _ => panic!("expected an answer"),
         }
         let empty = EngineResponse::new(200, BASE_URL, b"{}".to_vec());
-        assert!(
-            engine(Some("KEY"))
-                .parse(&empty, &query("hello"))
-                .expect("items")
-                .is_empty()
-        );
+        let items = engine(Some("KEY")).parse(&empty, &query("hello"));
+        assert!(items.expect("items").is_empty());
     }
 }

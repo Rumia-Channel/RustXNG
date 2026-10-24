@@ -1,4 +1,4 @@
-//! UXwing engine, ported from searx/engines/uxwing.py (images).
+//! UXwing engine, ported from searx/engines/uxwing.py.
 // engine-id: uxwing
 
 use std::sync::Arc;

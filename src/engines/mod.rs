@@ -39,6 +39,7 @@ pub mod artic;
 pub mod artstation;
 pub mod arxiv;
 pub mod astrophysics_data_system;
+pub mod azure;
 pub mod baidu;
 pub mod bandcamp;
 pub mod bilibili;
@@ -76,11 +77,14 @@ pub mod dogpile;
 pub mod duckduckgo;
 pub mod duckduckgo_definitions;
 pub mod duckduckgo_extra;
+pub mod duckduckgo_weather;
 pub mod duckduckgo_web;
 pub mod duden;
 pub mod ebay;
+pub mod elasticsearch;
 pub mod emojipedia;
 pub mod europepmc;
+pub mod exaapi;
 pub mod fdroid;
 pub mod findborg;
 pub mod findfiles;
@@ -90,6 +94,7 @@ pub mod five_hundred_px;
 pub mod flaticon;
 pub mod flickr;
 pub mod flickr_noapi;
+pub mod freesound;
 pub mod frinkiac;
 pub mod fyyd;
 pub mod geizhals;
@@ -102,6 +107,7 @@ pub mod gitlab;
 pub mod gmx;
 pub mod goodreads;
 pub mod google;
+pub mod google_cse;
 pub mod google_images;
 pub mod google_news;
 pub mod google_play;
@@ -123,6 +129,7 @@ pub mod iseek;
 pub mod jina;
 pub mod jisho;
 pub mod json_engine;
+pub mod kagi;
 pub mod keenable;
 pub mod kickass;
 pub mod lemmy;
@@ -137,6 +144,7 @@ pub mod mastodon;
 pub mod material_icons;
 pub mod mediathekviewweb;
 pub mod mediawiki;
+pub mod meilisearch;
 pub mod metacpan;
 pub mod microsoft_learn;
 pub mod mixcloud;
@@ -153,6 +161,7 @@ pub mod npm;
 pub mod nvd;
 pub mod nyaa;
 pub mod odysee;
+pub mod ollama;
 pub mod open_meteo;
 pub mod openalex;
 pub mod openclipart;
@@ -203,6 +212,7 @@ pub mod sogou_images;
 pub mod sogou_videos;
 pub mod sogou_wechat;
 pub mod solidtorrents;
+pub mod solr;
 pub mod soundcloud;
 pub mod sourcehut;
 pub mod spotify;
@@ -221,6 +231,7 @@ pub mod tokyotoshokan;
 pub mod tonline;
 pub mod tootfinder;
 pub mod torznab;
+pub mod translated;
 pub mod tusksearch;
 pub mod unsplash;
 pub mod uxwing;
@@ -234,14 +245,20 @@ pub mod wikipedia;
 pub mod wolframalpha_api;
 pub mod wolframalpha_noapi;
 pub mod wordnik;
+pub mod wttr;
 pub mod www1x;
 pub mod xpath;
 pub mod xprivo;
+pub mod yacy;
 pub mod yahoo;
+pub mod yahoo_news;
 pub mod yandex;
+pub mod yandex_api;
+pub mod yandex_music;
 pub mod yep;
 pub mod youtube_api;
 pub mod youtube_noapi;
+pub mod zlibrary;
 
 use crate::engine::EngineHandle;
 use crate::settings::EngineConfig;
@@ -472,6 +489,23 @@ pub fn build(config: &EngineConfig) -> Result<EngineHandle, String> {
         "voidlinux" => voidlinux::VoidLinux::from_config(config)?,
         "vuhuv" => vuhuv::Vuhuv::from_config(config)?,
         "xprivo" => xprivo::Xprivo::from_config(config)?,
+        "exaapi" => exaapi::ExaApi::from_config(config)?,
+        "freesound" => freesound::Freesound::from_config(config)?,
+        "google_cse" => google_cse::GoogleCse::from_config(config)?,
+        "kagi" => kagi::Kagi::from_config(config)?,
+        "ollama" => ollama::Ollama::from_config(config)?,
+        "translated" => translated::Translated::from_config(config)?,
+        "wttr" => wttr::Wttr::from_config(config)?,
+        "yacy" => yacy::Yacy::from_config(config)?,
+        "yahoo_news" => yahoo_news::YahooNews::from_config(config)?,
+        "azure" => azure::Azure::from_config(config)?,
+        "meilisearch" => meilisearch::Meilisearch::from_config(config)?,
+        "solr" => solr::Solr::from_config(config)?,
+        "elasticsearch" => elasticsearch::Elasticsearch::from_config(config)?,
+        "yandex_api" => yandex_api::YandexApi::from_config(config)?,
+        "duckduckgo_weather" => duckduckgo_weather::DuckDuckGoWeather::from_config(config)?,
+        "yandex_music" => yandex_music::YandexMusic::from_config(config)?,
+        "zlibrary" => zlibrary::Zlibrary::from_config(config)?,
         other => {
             return Err(format!(
                 "engine {:?} uses the unknown engine type {other:?}",

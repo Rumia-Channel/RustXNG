@@ -4,6 +4,37 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-24
+
+全エンジンの移植を完了したリリースです（後方互換）。
+
+### Added
+
+- **エンジン 226 型 / 上流 352 エントリをすべて実装（100%）**
+  - 検索系: yandex, yahoo, seznam, marginalia, yep, swisscows, quark, sogou, baidu 系, naver ほか
+  - 動画/音楽: vimeo, rumble, odysee, niconico, youtube_api, bilibili, iqiyi, acfun, yandex_music, spotify
+  - 画像: google_images, flickr, pinterest, pixiv, flaticon, iconify, lucide, material_icons, tineye, unsplash 系
+  - 学術: pubmed, europepmc, openalex, springer, astrophysics_data_system, pdbe, nvd, chatnoir, scanr_structures
+  - パッケージ/開発: github_code, gitlab, sourcehut, gitea, pkg_go_dev, hex, metacpan, lib_rs, nvd, repology, fdroid
+  - ショッピング: ebay, geizhals, steam, shopify_stock, apkmirror, apple_app_store, google_play
+  - 地域/ニュース: tagesschau, reuters, yahoo_news, swisscows_news, il_post, ansa, gmx, www1x, neosearch, xprivo ほか
+  - torrent/ファイル: piratebay, nyaa, kickass, solidtorrents, torznab, tokyotoshokan, btdigg, bt4g, annas_archive, zlibrary
+  - 検索バックエンド: elasticsearch, solr, meilisearch（HTTP 完全実装）
+  - 翻訳/天気/その他: deepl, libretranslate, lingva, mozhi, translated, open_meteo, wttr, duckduckgo_weather, currency_convert
+- エンジン初期化に失敗しても起動を継続する挙動（上流と同じ。失敗理由は警告ログに記録）
+- レビュー補助: `tools/register_engines.py`（エンジンの登録を自動同期）、`tools/verify_boot.py`
+
+### Changed
+
+- 既定で有効なエンジンを約 170 に拡大（認証情報・自前インスタンスが必要なものは上流と同じく無効）
+- ドキュメント: COVERAGE / COMPATIBILITY / README を最新の数値に更新
+
+### Tests
+
+- ユニット 722 + 統合 14（外部ネットワーク不要）
+
+
+
 ## [0.2.0] - 2026-10-18
 
 SearXNG クライアントから見た互換性を高めたリリースです。JSON/CSV/config の形が変わるため **破壊的変更** として 0.2.0 にしました。

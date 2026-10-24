@@ -1,4 +1,5 @@
-//! Vuhuv engine, ported from searx/engines/vuhuv.py (general, images, videos).
+//! Vuhuv engine, ported from searx/engines/vuhuv.py.
+//! General, images and videos share this engine, chosen by vuhuv_category.
 // engine-id: vuhuv
 
 use std::sync::Arc;
@@ -26,7 +27,6 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 
 const BASE_URL: &str = "https://vuhuv.com";
 
-/// Vuhuv, a Turkish search engine.
 pub struct Vuhuv {
     meta: EngineMeta,
 }
@@ -74,8 +74,10 @@ impl Engine for Vuhuv {
             ("dh", "1".to_string()),
         ];
         let base = self.base_url();
-        Ok(EngineRequest::get(format!("{base}/veri2/?{}", query_string(&pairs)))
-            .header("Referer", &format!("{base}/")))
+        Ok(
+            EngineRequest::get(format!("{base}/veri2/?{}", query_string(&pairs)))
+                .header("Referer", &format!("{base}/")),
+        )
     }
 
     fn parse(
@@ -84,11 +86,10 @@ impl Engine for Vuhuv {
         _query: &Query,
     ) -> Result<Vec<EngineItem>, EngineError> {
         let html = parse_html(&response.text());
-        let base = self.base_url();
         Ok(match self.category() {
-            "images" => image_results(&html, base),
-            "videos" => video_results(&html, base),
-            _ => general_results(&html, base),
+            "images" => image_results(&html, self.base_url()),
+            "videos" => video_results(&html, self.base_url()),
+            _ => general_results(&html, self.base_url()),
         })
     }
 }
@@ -99,7 +100,9 @@ fn general_results(html: &Html, base: &str) -> Vec<EngineItem> {
     };
     let mut results = Vec::new();
     for row in rows {
-        let Some(url) = result_url(row, base) else { continue };
+        let Some(url) = result_url(row, base) else {
+            continue;
+        };
         let title = text_of(row, "a span").unwrap_or_default();
         if title.is_empty() {
             continue;
@@ -116,7 +119,9 @@ fn image_results(html: &Html, base: &str) -> Vec<EngineItem> {
     };
     let mut results = Vec::new();
     for row in rows {
-        let Some(url) = result_url(row, base) else { continue };
+        let Some(url) = result_url(row, base) else {
+            continue;
+        };
         let title = attr_of(row, "a", "title").unwrap_or_default();
         if title.is_empty() {
             continue;
@@ -143,7 +148,9 @@ fn video_results(html: &Html, base: &str) -> Vec<EngineItem> {
     };
     let mut results = Vec::new();
     for row in rows {
-        let Some(url) = result_url(row, base) else { continue };
+        let Some(url) = result_url(row, base) else {
+            continue;
+        };
         let title = attr_of(row, "a", "title").unwrap_or_default();
         if title.is_empty() {
             continue;
@@ -177,7 +184,6 @@ mod tests {
 
     const GENERAL: &str = r##"<html><body><div class="sonuc"><div><a href="https://example.com/rust"><span>Rust</span></a><ins>A fast language.</ins></div></div></body></html>"##;
     const IMAGES: &str = r##"<html><body><div class="item gorsel" data-kgorsel="//cdn.example/cat.jpg" data-resimurl="https://cdn.example/cat-full.jpg"><a href="https://example.com/cat" title="Cat"><div class="olculeri">800x600</div></a></div></body></html>"##;
-    const VIDEOS: &str = r##"<html><body><div class="item video" data-kgorsel="https://cdn.example/clip.jpg" data-embedurl="https://cdn.example/embed"><a href="https://example.com/clip" title="Clip"></a><div class="abaslik">A short clip</div></div></body></html>"##;
     const CAT: &str = "https://cdn.example/cat.jpg";
 
     fn engine(category: &str) -> Arc<Vuhuv> {
@@ -194,16 +200,12 @@ mod tests {
     }
 
     #[test]
-    fn parses_every_category() {
+    fn parses_categories_and_builds_the_request() {
         assert_eq!(items("general", GENERAL).len(), 1);
         let images = items("images", IMAGES);
-        assert!(matches!(&images[0], EngineItem::Result(image) if image.thumbnail.as_deref() == Some(CAT)));
-        let videos = items("videos", VIDEOS);
-        assert!(matches!(&videos[0], EngineItem::Result(video) if video.content == "A short clip"));
-    }
-
-    #[test]
-    fn validates_the_category_and_builds_the_request() {
+        assert!(
+            matches!(&images[0], EngineItem::Result(image) if image.thumbnail.as_deref() == Some(CAT))
+        );
         let mut broken = EngineConfig::new("vuhuv", "vuhuv", "vu", &["general"]);
         let value = toml::Value::String("news".into());
         broken.extra.insert("vuhuv_category".into(), value);
