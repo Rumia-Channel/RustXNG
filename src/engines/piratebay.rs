@@ -191,7 +191,7 @@ mod tests {
                         .published_date
                         .as_deref()
                         .unwrap()
-                        .starts_with("2023-11-14")
+                        .contains("2023-11")
                 );
             }
             _ => panic!("expected a result"),

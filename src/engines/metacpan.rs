@@ -4,7 +4,9 @@
 use std::sync::Arc;
 
 use crate::engine::util::*;
-use crate::engine::{Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse};
+use crate::engine::{
+    Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse,
+};
 use crate::query::Query;
 use crate::settings::EngineConfig;
 
@@ -29,18 +31,24 @@ pub struct Metacpan {
 
 impl Metacpan {
     pub fn from_config(config: &EngineConfig) -> Result<Arc<Self>, String> {
-        Ok(Arc::new(Self { meta: EngineMeta::from_config(config, DEFAULTS) }))
+        Ok(Arc::new(Self {
+            meta: EngineMeta::from_config(config, DEFAULTS),
+        }))
     }
 
     fn page_size(&self) -> u32 {
-        self.meta.opt_i64("page_size")
+        self.meta
+            .opt_i64("page_size")
             .filter(|value| *value > 0)
             .map(|value| value.min(5000) as u32)
             .unwrap_or(PAGE_SIZE)
     }
 
     fn search_url(&self) -> String {
-        self.meta.base_url.clone().unwrap_or_else(|| SEARCH_URL.to_string())
+        self.meta
+            .base_url
+            .clone()
+            .unwrap_or_else(|| SEARCH_URL.to_string())
     }
 }
 
@@ -76,7 +84,11 @@ impl Engine for Metacpan {
             .json_body(body))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
         let Some(hits) = json_path(&json, "hits.hits").and_then(|value| value.as_array()) else {
             return Ok(Vec::new());
@@ -84,14 +96,25 @@ impl Engine for Metacpan {
         let mut results = Vec::new();
         for hit in hits {
             let module = json_str(hit, "_source.documentation");
-            if module.is_empty() { continue; }
+            if module.is_empty() {
+                continue;
+            }
             let url = format!("https://metacpan.org/pod/{module}");
-            results.push(ResultBuilder::new(url, module)
-                .content(json_str(hit, "_source.abstract"))
-                .build());
+            if !is_http_url(&url) {
+                continue;
+            }
+            results.push(
+                ResultBuilder::new(url, module)
+                    .content(json_str(hit, "_source.abstract"))
+                    .build(),
+            );
         }
         Ok(results)
     }
+}
+
+fn is_http_url(url: &str) -> bool {
+    url.starts_with("http://") || url.starts_with("https://")
 }
 
 #[cfg(test)]
@@ -104,7 +127,13 @@ mod tests {
     ]}}"##;
 
     fn engine() -> Arc<Metacpan> {
-        Metacpan::from_config(&EngineConfig::new("metacpan", "metacpan", "cpan", &["it", "packages"])).unwrap()
+        Metacpan::from_config(&EngineConfig::new(
+            "metacpan",
+            "metacpan",
+            "cpan",
+            &["it", "packages"],
+        ))
+        .unwrap()
     }
 
     fn query(text: &str) -> Query {
@@ -116,7 +145,9 @@ mod tests {
         let response = EngineResponse::new(200, SEARCH_URL, FIXTURE.as_bytes().to_vec());
         let items = engine().parse(&response, &query("dom")).unwrap();
         assert_eq!(items.len(), 1);
-        let EngineItem::Result(result) = &items[0] else { panic!("expected a result") };
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(result.url, "https://metacpan.org/pod/Mojo::DOM");
         assert_eq!(result.title, "Mojo::DOM");
         assert_eq!(result.content, "HTML parser");
@@ -140,7 +171,9 @@ mod tests {
     #[test]
     fn the_page_size_is_configurable() {
         let mut config = EngineConfig::new("metacpan", "metacpan", "cpan", &["it"]);
-        config.extra.insert("page_size".into(), toml::Value::Integer(5));
+        config
+            .extra
+            .insert("page_size".into(), toml::Value::Integer(5));
         let engine = Metacpan::from_config(&config).unwrap();
         let request = engine.build_request(&query("dom"), 3).unwrap();
         let body = request.json.expect("a JSON body");

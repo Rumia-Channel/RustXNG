@@ -1491,3 +1491,111 @@ shortcut = "fla"
 categories = ["images"]
 paging = true
 
+[[engines]]
+name = "acfun"
+engine = "acfun"
+shortcut = "acf"
+categories = ["videos"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "ahmia"
+engine = "ahmia"
+categories = ["onions"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "bilibili"
+engine = "bilibili"
+shortcut = "bil"
+categories = ["videos"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "bt4g"
+engine = "bt4g"
+shortcut = "bt4g"
+categories = ["files"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "btdigg"
+engine = "btdigg"
+shortcut = "bt"
+categories = ["files"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "chefkoch"
+engine = "chefkoch"
+shortcut = "chef"
+categories = []
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "destatis"
+engine = "destatis"
+shortcut = "destat"
+categories = []
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "huggingface"
+engine = "huggingface"
+shortcut = "hf"
+categories = ["it", "repos"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "jina"
+engine = "jina"
+shortcut = "ji"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "lib_rs"
+engine = "lib_rs"
+shortcut = "lrs"
+categories = ["it", "packages"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "metacpan"
+engine = "metacpan"
+shortcut = "cpan"
+categories = ["it", "packages"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "nvd"
+engine = "nvd"
+shortcut = "nvd"
+categories = ["it"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "pdbe"
+engine = "pdbe"
+shortcut = "pdb"
+categories = ["science"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "torznab"
+engine = "torznab"
+categories = ["files"]
+disabled = true  # unverified; remove when confirmed working

@@ -7,7 +7,9 @@
 use std::sync::Arc;
 
 use crate::engine::util::*;
-use crate::engine::{Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse};
+use crate::engine::{
+    Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse,
+};
 use crate::query::Query;
 use crate::settings::EngineConfig;
 
@@ -35,7 +37,9 @@ impl HuggingFace {
         if !matches!(endpoint, "datasets" | "models" | "spaces") {
             return Err(format!("unsupported Hugging Face endpoint: {endpoint}"));
         }
-        Ok(Arc::new(Self { meta: EngineMeta::from_config(config, DEFAULTS) }))
+        Ok(Arc::new(Self {
+            meta: EngineMeta::from_config(config, DEFAULTS),
+        }))
     }
 
     fn base_url(&self) -> String {
@@ -44,7 +48,10 @@ impl HuggingFace {
     }
 
     fn endpoint(&self) -> String {
-        self.meta.opt_str("huggingface_endpoint").unwrap_or("models").to_string()
+        self.meta
+            .opt_str("huggingface_endpoint")
+            .unwrap_or("models")
+            .to_string()
     }
 }
 
@@ -54,33 +61,65 @@ impl Engine for HuggingFace {
     }
 
     fn build_request(&self, query: &Query, _pageno: u32) -> Result<EngineRequest, EngineError> {
-        let pairs = vec![("direction", "-1".to_string()), ("search", query.query_text())];
-        Ok(EngineRequest::get(format!("{}/api/{}?{}", self.base_url(), self.endpoint(), query_string(&pairs)))
-            .header("Accept", "application/json"))
+        let pairs = vec![
+            ("direction", "-1".to_string()),
+            ("search", query.query_text()),
+        ];
+        Ok(EngineRequest::get(format!(
+            "{}/api/{}?{}",
+            self.base_url(),
+            self.endpoint(),
+            query_string(&pairs)
+        ))
+        .header("Accept", "application/json"))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
-        let Some(entries) = json.as_array() else { return Ok(Vec::new()) };
+        let Some(entries) = json.as_array() else {
+            return Ok(Vec::new());
+        };
         let base = self.base_url();
         let endpoint = self.endpoint();
         let mut results = Vec::new();
         for entry in entries {
             let id = json_str(entry, "id");
-            if id.is_empty() { continue; }
-            let url = if endpoint == "models" { format!("{base}/{id}") } else { format!("{base}/{endpoint}/{id}") };
-            if !is_http_url(&url) { continue; }
+            if id.is_empty() {
+                continue;
+            }
+            let url = if endpoint == "models" {
+                format!("{base}/{id}")
+            } else {
+                format!("{base}/{endpoint}/{id}")
+            };
+            if !is_http_url(&url) {
+                continue;
+            }
             let mut parts = Vec::new();
-            if let Some(likes) = count(entry, "likes") { parts.push(format!("Likes: {likes}")); }
-            if let Some(downloads) = count(entry, "downloads") { parts.push(format!("Downloads: {}", thousands(downloads))); }
+            if let Some(likes) = count(entry, "likes") {
+                parts.push(format!("Likes: {likes}"));
+            }
+            if let Some(downloads) = count(entry, "downloads") {
+                parts.push(format!("Downloads: {}", thousands(downloads)));
+            }
             let tags = tag_list(entry);
-            if !tags.is_empty() { parts.push(format!("Tags: {}", tags.join(", "))); }
+            if !tags.is_empty() {
+                parts.push(format!("Tags: {}", tags.join(", ")));
+            }
             let description = json_str(entry, "description");
-            if !description.is_empty() { parts.push(format!("Description: {description}")); }
-            results.push(ResultBuilder::new(url, id)
-                .content(strip_tags(&parts.join(" | ")))
-                .published_date(date(&json_str(entry, "createdAt")).unwrap_or_default())
-                .build());
+            if !description.is_empty() {
+                parts.push(format!("Description: {description}"));
+            }
+            results.push(
+                ResultBuilder::new(url, id)
+                    .content(strip_tags(&parts.join(" | ")))
+                    .published_date(date(&json_str(entry, "createdAt")).unwrap_or_default())
+                    .build(),
+            );
         }
         Ok(results)
     }
@@ -92,7 +131,9 @@ fn is_http_url(url: &str) -> bool {
 
 /// A non zero numeric field, upstream tests the truthiness of the value.
 fn count(entry: &serde_json::Value, key: &str) -> Option<i64> {
-    json_path(entry, key).and_then(serde_json::Value::as_i64).filter(|value| *value != 0)
+    json_path(entry, key)
+        .and_then(serde_json::Value::as_i64)
+        .filter(|value| *value != 0)
 }
 
 /// Thousands separators, like the format spec of upstream.
@@ -100,15 +141,23 @@ fn thousands(value: i64) -> String {
     let digits = value.max(0).to_string();
     let mut output = String::new();
     for (index, character) in digits.chars().enumerate() {
-        if index > 0 && (digits.len() - index) % 3 == 0 { output.push(','); }
+        if index > 0 && (digits.len() - index) % 3 == 0 {
+            output.push(',');
+        }
         output.push(character);
     }
     output
 }
 
 fn tag_list(entry: &serde_json::Value) -> Vec<String> {
-    json_path(entry, "tags").and_then(serde_json::Value::as_array)
-        .map(|values| values.iter().filter_map(|value| value.as_str().map(str::to_string)).collect())
+    json_path(entry, "tags")
+        .and_then(serde_json::Value::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(|value| value.as_str().map(str::to_string))
+                .collect()
+        })
         .unwrap_or_default()
 }
 
@@ -134,12 +183,21 @@ mod tests {
     ]"##;
 
     fn engine() -> Arc<HuggingFace> {
-        HuggingFace::from_config(&EngineConfig::new("huggingface", "huggingface", "hf", &["it", "repos"])).unwrap()
+        HuggingFace::from_config(&EngineConfig::new(
+            "huggingface",
+            "huggingface",
+            "hf",
+            &["it", "repos"],
+        ))
+        .unwrap()
     }
 
     fn engine_with(endpoint: &str) -> Arc<HuggingFace> {
         let mut config = EngineConfig::new("huggingface", "huggingface", "hfd", &["it"]);
-        config.extra.insert("huggingface_endpoint".into(), toml::Value::String(endpoint.into()));
+        config.extra.insert(
+            "huggingface_endpoint".into(),
+            toml::Value::String(endpoint.into()),
+        );
         HuggingFace::from_config(&config).unwrap()
     }
 
@@ -155,12 +213,22 @@ mod tests {
     fn parses_models() {
         let items = engine().parse(&response(FIXTURE), &query("bert")).unwrap();
         assert_eq!(items.len(), 2);
-        let EngineItem::Result(result) = &items[0] else { panic!("expected a result") };
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(result.url, "https://huggingface.co/bert-base-uncased");
         assert_eq!(result.title, "bert-base-uncased");
-        assert_eq!(result.content, "Likes: 12 | Downloads: 1,234,567 | Tags: transformers, pytorch | Description: A BERT model.");
-        assert_eq!(result.published_date.as_deref(), Some("2022-12-01T00:00:00"));
-        let EngineItem::Result(second) = &items[1] else { panic!("expected a result") };
+        assert_eq!(
+            result.content,
+            "Likes: 12 | Downloads: 1,234,567 | Tags: transformers, pytorch | Description: A BERT model."
+        );
+        assert_eq!(
+            result.published_date.as_deref(),
+            Some("2022-12-01T00:00:00")
+        );
+        let EngineItem::Result(second) = &items[1] else {
+            panic!("expected a result")
+        };
         assert_eq!(second.url, "https://huggingface.co/gpt2");
         assert_eq!(second.published_date, None);
         assert_eq!(second.content, "");
@@ -168,23 +236,40 @@ mod tests {
 
     #[test]
     fn builds_dataset_urls_and_requests() {
-        let items = engine_with("datasets").parse(&response(r##"[{"id":"squad"}]"##), &query("squad")).unwrap();
-        let EngineItem::Result(result) = &items[0] else { panic!("expected a result") };
+        let items = engine_with("datasets")
+            .parse(&response(r##"[{"id":"squad"}]"##), &query("squad"))
+            .unwrap();
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(result.url, "https://huggingface.co/datasets/squad");
-        let request = engine_with("datasets").build_request(&query("rust"), 1).unwrap();
-        assert_eq!(request.url, "https://huggingface.co/api/datasets?direction=-1&search=rust");
+        let request = engine_with("datasets")
+            .build_request(&query("rust"), 1)
+            .unwrap();
+        assert_eq!(
+            request.url,
+            "https://huggingface.co/api/datasets?direction=-1&search=rust"
+        );
     }
 
     #[test]
     fn rejects_unknown_endpoints() {
         let mut config = EngineConfig::new("huggingface", "huggingface", "hf", &["it"]);
-        config.extra.insert("huggingface_endpoint".into(), toml::Value::String("papers".into()));
+        config.extra.insert(
+            "huggingface_endpoint".into(),
+            toml::Value::String("papers".into()),
+        );
         assert!(HuggingFace::from_config(&config).is_err());
     }
 
     #[test]
     fn a_missing_container_yields_no_results() {
         let body = r##"{"error":"bad"}"##;
-        assert!(engine().parse(&response(body), &query("bert")).unwrap().is_empty());
+        assert!(
+            engine()
+                .parse(&response(body), &query("bert"))
+                .unwrap()
+                .is_empty()
+        );
     }
 }

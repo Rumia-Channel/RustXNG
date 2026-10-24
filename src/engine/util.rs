@@ -397,6 +397,13 @@ pub fn parse_rss(xml: &str) -> Result<Vec<RssItem>, EngineError> {
                     captured.clear();
                 }
             }
+            quick_xml::events::Event::CData(text) => {
+                // CDATA sections carry raw HTML ("<br>") in many feeds.
+                if field.is_some() {
+                    let raw = String::from_utf8_lossy(&text.into_inner()).to_string();
+                    captured.push_str(&decode_entities(&raw));
+                }
+            }
             quick_xml::events::Event::Text(text) => {
                 if field.is_some() {
                     // Feeds use HTML entities (&nbsp;, &#8217;) that the XML

@@ -25,6 +25,8 @@
 //! | `wikipedia`           | `wikipedia.py`               |
 //! | `youtube_noapi`       | `youtube_noapi.py`           |
 
+pub mod acfun;
+pub mod ahmia;
 pub mod alpinelinux;
 pub mod andisearch;
 pub mod annas_archive;
@@ -35,6 +37,7 @@ pub mod artstation;
 pub mod arxiv;
 pub mod baidu;
 pub mod bandcamp;
+pub mod bilibili;
 pub mod bing;
 pub mod bing_images;
 pub mod bing_news;
@@ -43,8 +46,11 @@ pub mod bitchute;
 pub mod bpb;
 pub mod brave;
 pub mod braveapi;
+pub mod bt4g;
+pub mod btdigg;
 pub mod cachy_os;
 pub mod ccc_media;
+pub mod chefkoch;
 pub mod chinaso;
 pub mod cloudflareai;
 pub mod core;
@@ -53,6 +59,7 @@ pub mod crossref;
 pub mod currency_convert;
 pub mod dailymotion;
 pub mod deezer;
+pub mod destatis;
 pub mod deviantart;
 pub mod dictzone;
 pub mod discourse;
@@ -87,19 +94,23 @@ pub mod google_news;
 pub mod google_play;
 pub mod hackernews;
 pub mod hex;
+pub mod huggingface;
 pub mod iconify;
 pub mod imdb;
 pub mod imgur;
 pub mod invidious;
 pub mod iqiyi;
+pub mod jina;
 pub mod jisho;
 pub mod json_engine;
 pub mod kickass;
 pub mod lemmy;
+pub mod lib_rs;
 pub mod luxxle;
 pub mod marginalia;
 pub mod mastodon;
 pub mod mediawiki;
+pub mod metacpan;
 pub mod mixcloud;
 pub mod mojeek;
 pub mod mwmbl;
@@ -108,6 +119,7 @@ pub mod neosearch;
 pub mod niconico;
 pub mod nine_gag;
 pub mod npm;
+pub mod nvd;
 pub mod nyaa;
 pub mod odysee;
 pub mod open_meteo;
@@ -116,6 +128,7 @@ pub mod openclipart;
 pub mod openlibrary;
 pub mod openstreetmap;
 pub mod openverse;
+pub mod pdbe;
 pub mod peertube;
 pub mod pexels;
 pub mod photon;
@@ -153,6 +166,7 @@ pub mod swisscows;
 pub mod tokyotoshokan;
 pub mod tonline;
 pub mod tootfinder;
+pub mod torznab;
 pub mod tusksearch;
 pub mod unsplash;
 pub mod vimeo;
@@ -322,6 +336,20 @@ pub fn build(config: &EngineConfig) -> Result<EngineHandle, String> {
         "solidtorrents" => solidtorrents::SolidTorrents::from_config(config)?,
         "tokyotoshokan" => tokyotoshokan::TokyoToshokan::from_config(config)?,
         "wolframalpha_noapi" => wolframalpha_noapi::WolframAlphaNoapi::from_config(config)?,
+        "acfun" => acfun::Acfun::from_config(config)?,
+        "ahmia" => ahmia::Ahmia::from_config(config)?,
+        "bilibili" => bilibili::Bilibili::from_config(config)?,
+        "bt4g" => bt4g::Bt4g::from_config(config)?,
+        "btdigg" => btdigg::Btdigg::from_config(config)?,
+        "chefkoch" => chefkoch::Chefkoch::from_config(config)?,
+        "destatis" => destatis::Destatis::from_config(config)?,
+        "huggingface" => huggingface::HuggingFace::from_config(config)?,
+        "jina" => jina::Jina::from_config(config)?,
+        "lib_rs" => lib_rs::LibRs::from_config(config)?,
+        "metacpan" => metacpan::Metacpan::from_config(config)?,
+        "nvd" => nvd::Nvd::from_config(config)?,
+        "pdbe" => pdbe::Pdbe::from_config(config)?,
+        "torznab" => torznab::Torznab::from_config(config)?,
         other => {
             return Err(format!(
                 "engine {:?} uses the unknown engine type {other:?}",

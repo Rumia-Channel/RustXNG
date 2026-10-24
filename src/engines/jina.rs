@@ -6,7 +6,9 @@
 use std::sync::Arc;
 
 use crate::engine::util::*;
-use crate::engine::{Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse};
+use crate::engine::{
+    Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse,
+};
 use crate::query::Query;
 use crate::settings::EngineConfig;
 
@@ -43,7 +45,10 @@ impl Jina {
     }
 
     fn mode(&self) -> String {
-        self.meta.opt_str("jina_engine").unwrap_or("reader").to_string()
+        self.meta
+            .opt_str("jina_engine")
+            .unwrap_or("reader")
+            .to_string()
     }
 }
 
@@ -63,12 +68,18 @@ impl Engine for Jina {
             ("engine", self.mode()),
             ("respondWith", "no-content".to_string()),
         ];
-        Ok(EngineRequest::get(format!("{}/?{}", self.base_url(), query_string(&pairs)))
-            .header("Accept", "application/json")
-            .header("Authorization", &format!("Bearer {api_key}")))
+        Ok(
+            EngineRequest::get(format!("{}/?{}", self.base_url(), query_string(&pairs)))
+                .header("Accept", "application/json")
+                .header("Authorization", &format!("Bearer {api_key}")),
+        )
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
         let Some(entries) = json_path(&json, "data").and_then(|value| value.as_array()) else {
             return Ok(Vec::new());
@@ -77,11 +88,15 @@ impl Engine for Jina {
         for entry in entries {
             let url = json_str(entry, "url");
             let title = json_str(entry, "title");
-            if title.is_empty() || !is_http_url(&url) { continue; }
-            results.push(ResultBuilder::new(url, title)
-                .content(json_str(entry, "description"))
-                .published_date(date(&json_str(entry, "date")).unwrap_or_default())
-                .build());
+            if title.is_empty() || !is_http_url(&url) {
+                continue;
+            }
+            results.push(
+                ResultBuilder::new(url, title)
+                    .content(json_str(entry, "description"))
+                    .published_date(date(&json_str(entry, "date")).unwrap_or_default())
+                    .build(),
+            );
         }
         Ok(results)
     }
@@ -140,9 +155,15 @@ mod tests {
             request.url,
             "https://s.jina.ai/?q=rust&page=2&engine=reader&respondWith=no-content"
         );
-        let authorization = request.headers.get("authorization").and_then(|value| value.to_str().ok());
+        let authorization = request
+            .headers
+            .get("authorization")
+            .and_then(|value| value.to_str().ok());
         assert_eq!(authorization, Some("Bearer jina_test"));
-        let accept = request.headers.get("accept").and_then(|value| value.to_str().ok());
+        let accept = request
+            .headers
+            .get("accept")
+            .and_then(|value| value.to_str().ok());
         assert_eq!(accept, Some("application/json"));
     }
 
@@ -150,12 +171,19 @@ mod tests {
     fn parses_the_results() {
         let items = engine().parse(&response(FIXTURE), &query("rust")).unwrap();
         assert_eq!(items.len(), 2);
-        let EngineItem::Result(result) = &items[0] else { panic!("expected a result") };
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(result.url, "https://example.com/a");
         assert_eq!(result.title, "Example A");
         assert_eq!(result.content, "A snippet");
-        assert_eq!(result.published_date.as_deref(), Some("2024-02-03T00:00:00"));
-        let EngineItem::Result(second) = &items[1] else { panic!("expected a result") };
+        assert_eq!(
+            result.published_date.as_deref(),
+            Some("2024-02-03T00:00:00")
+        );
+        let EngineItem::Result(second) = &items[1] else {
+            panic!("expected a result")
+        };
         assert_eq!(second.url, "https://example.com/d");
         assert_eq!(second.published_date, None);
     }
@@ -164,10 +192,16 @@ mod tests {
     fn the_mode_is_configurable() {
         let mut config = EngineConfig::new("jina", "jina", "ji", &["general"]);
         config.api_key = Some("jina_test".to_string());
-        config.extra.insert("jina_engine".into(), toml::Value::String("bing".into()));
+        config
+            .extra
+            .insert("jina_engine".into(), toml::Value::String("bing".into()));
         let engine = Jina::from_config(&config).unwrap();
         let request = engine.build_request(&query("rust"), 1).unwrap();
-        assert!(request.url.contains("engine=bing"), "missing the mode in {}", request.url);
+        assert!(
+            request.url.contains("engine=bing"),
+            "missing the mode in {}",
+            request.url
+        );
     }
 
     #[test]
@@ -178,6 +212,11 @@ mod tests {
 
     #[test]
     fn a_missing_container_yields_no_results() {
-        assert!(engine().parse(&response(r##"{"code":401}"##), &query("rust")).unwrap().is_empty());
+        assert!(
+            engine()
+                .parse(&response(r##"{"code":401}"##), &query("rust"))
+                .unwrap()
+                .is_empty()
+        );
     }
 }
