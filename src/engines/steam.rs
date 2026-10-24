@@ -151,7 +151,10 @@ mod tests {
             EngineItem::Result(result) => {
                 assert_eq!(result.title, "Counter-Strike 2");
                 assert_eq!(result.url, "https://store.steampowered.com/app/730");
-                assert_eq!(result.content, "Price: 19.99 USD | Platforms: linux, windows");
+                assert_eq!(
+                    result.content,
+                    "Price: 19.99 USD | Platforms: linux, windows"
+                );
                 assert_eq!(
                     result.thumbnail.as_deref(),
                     Some("https://cdn.akamai.steamstatic.com/steam/apps/730/capsule.jpg")

@@ -24,6 +24,8 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 const BASE_URL: &str = "https://api.github.com";
 const API_VERSION: &str = "2022-11-28";
 const ACCEPT_HEADER: &str = "application/vnd.github.text-match+json";
+/// Lines are split on this, upstream splits on the newline character.
+const NEWLINE: &str = "\n";
 
 /// GitHub code search through the REST search API.
 pub struct GitHubCode {
@@ -37,23 +39,9 @@ impl GitHubCode {
         }))
     }
 
-    fn base_url(&self) -> String {
-        self.meta
-            .base_url
-            .clone()
-            .unwrap_or_else(|| BASE_URL.to_string())
-            .trim_end_matches('/')
-            .to_string()
-    }
-
     /// The ghc_auth type: none, personal_access_token or bearer.
     fn auth_type(&self) -> String {
         self.meta.opt_str("ghc_auth_type").unwrap_or("none").to_lowercase()
-    }
-
-    /// The token belonging to the auth type (configured as api_key).
-    fn token(&self) -> String {
-        self.meta.api_key.clone().unwrap_or_default()
     }
 
     /// Split the returned text matches into plain code lines. Upstream also
@@ -76,13 +64,13 @@ impl GitHubCode {
                 fragment = fragment.trim().to_string();
             }
             if strip_new_lines {
-                fragment = fragment.trim_matches(|c| c == '\n').to_string();
+                fragment = strip_newlines(&fragment);
             }
             if !first && separator {
                 lines.push("...".to_string());
             }
             first = false;
-            for line in fragment.split("\n") {
+            for line in fragment.split(NEWLINE) {
                 lines.push(line.to_string());
             }
         }
@@ -96,16 +84,18 @@ impl Engine for GitHubCode {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
+        let base = self.meta.base_url.clone().unwrap_or_else(|| BASE_URL.to_string());
+        let base = base.trim_end_matches('/');
         let url = format!(
-            "{}/search/code?sort=indexed&{}&{}",
-            self.base_url(),
+            "{base}/search/code?sort=indexed&{}&{}",
             query_string(&[("q", query.query_text())]),
             query_string(&[("page", pageno.to_string())])
         );
         let mut request = EngineRequest::get(url)
             .header("Accept", ACCEPT_HEADER)
             .header("X-GitHub-Api-Version", API_VERSION);
-        let token = self.token();
+        // The token belongs to the auth type and is stored as api_key.
+        let token = self.meta.api_key.clone().unwrap_or_default();
         request = match self.auth_type().as_str() {
             "personal_access_token" => request.header("Authorization", &format!("token {token}")),
             "bearer" => request.header("Authorization", &format!("Bearer {token}")),
@@ -146,6 +136,21 @@ impl Engine for GitHubCode {
         }
         Ok(results)
     }
+}
+
+/// Remove the leading and trailing newline bytes (LF is the byte 10) of a
+/// fragment, the lstrip/rstrip pair of upstream.
+fn strip_newlines(value: &str) -> String {
+    let bytes = value.as_bytes();
+    let mut start = 0;
+    let mut end = bytes.len();
+    while start < end && bytes[start] == 10 {
+        start += 1;
+    }
+    while end > start && bytes[end - 1] == 10 {
+        end -= 1;
+    }
+    value[start..end].to_string()
 }
 
 fn is_http_url(url: &str) -> bool {

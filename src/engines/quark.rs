@@ -67,9 +67,7 @@ impl Engine for Quark {
     fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
         let body = response.text();
         let captcha = regex::Regex::new(CAPTCHA_RE).map_err(|error| EngineError::Parse(error.to_string()))?;
-        if captcha.is_match(&body) {
-            return Err(EngineError::Captcha);
-        }
+        if captcha.is_match(&body) { return Err(EngineError::Captcha); }
         if self.category() == "images" {
             return parse_images(&body);
         }
@@ -138,9 +136,7 @@ fn pick(item: &serde_json::Value, paths: &[&str]) -> String {
 }
 
 fn item_date(item: &serde_json::Value) -> String {
-    let seconds = ["sourceProps.time", "source.time", "publish_time"]
-        .into_iter()
-        .find_map(|key| json_path(item, key).and_then(serde_json::Value::as_i64));
+    let seconds = ["sourceProps.time", "source.time", "publish_time"].into_iter().find_map(|key| json_path(item, key).and_then(serde_json::Value::as_i64));
     match seconds.and_then(|seconds| chrono::DateTime::<chrono::Utc>::from_timestamp(seconds, 0)) {
         Some(date) => date.to_rfc3339(),
         None => json_str(item, "time"),
@@ -180,7 +176,6 @@ mod tests {
             _ => panic!("expected a result"),
         }
     }
-
     #[test]
     fn parses_a_general_result_block() {
         let body = r##"<script type="application/json" id="s-data-1" data-used-by="hydrate">{"extraData":{"sc":"ss_doc"},"data":{"initialData":{"titleProps":{"content":"Alpha"},"sourceProps":{"dest_url":"https://example.com/a","time":1700000000},"summaryProps":{"content":"A <b>summary</b>"}}}}</script>"##;
@@ -196,8 +191,8 @@ mod tests {
     #[test]
     fn parses_the_image_api() {
         let body = r##"{"data":{"hit":{"imgInfo":{"item":[{"imgUrl":"https://example.com/p.jpg","img":"http://img.example.com/t.jpg","bigPicUrl":"http://img.example.com/b.jpg","title":"Cat","site":"example.com","width":800,"height":600,"publish_time":1700000000}]}}}}"##;
-        let result = parse("images", body);
-        let result = first_result(&result);
+        let items = parse("images", body);
+        let result = first_result(&items);
         assert_eq!(result.url, "https://example.com/p.jpg");
         assert_eq!(result.template, Template::Images);
         assert_eq!(result.thumbnail.as_deref(), Some("https://img.example.com/t.jpg"));

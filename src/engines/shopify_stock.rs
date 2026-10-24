@@ -151,7 +151,9 @@ mod tests {
                 assert_eq!(result.template, Template::Images);
                 assert_eq!(
                     result.img_src.as_deref(),
-                    Some("https://www.shopify.com/stock-photos/photos/happy-dog/download?quality=premium")
+                    Some(
+                        "https://www.shopify.com/stock-photos/photos/happy-dog/download?quality=premium"
+                    )
                 );
                 assert_eq!(
                     result.thumbnail.as_deref(),

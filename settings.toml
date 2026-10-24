@@ -1454,3 +1454,110 @@ engine = "yep"
 shortcut = "yep"
 categories = ["general"]
 disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "duden"
+engine = "duden"
+shortcut = "du"
+categories = ["dictionaries"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "fdroid"
+engine = "fdroid"
+shortcut = "fd"
+categories = ["it", "apps"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "flaticon"
+engine = "flaticon"
+shortcut = "fli"
+categories = ["images", "icons"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "iconify"
+engine = "iconify"
+shortcut = "ico"
+categories = ["images", "icons"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "jisho"
+engine = "jisho"
+shortcut = "js"
+categories = ["dictionaries"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "pinterest"
+engine = "pinterest"
+shortcut = "pin"
+categories = ["images"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "pixiv"
+engine = "pixiv"
+shortcut = "pv"
+categories = ["images"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "pubmed"
+engine = "pubmed"
+shortcut = "pub"
+categories = ["science", "scientific publications"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "quark"
+engine = "quark"
+shortcut = "qk"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "repology"
+engine = "repology"
+shortcut = "rep"
+categories = ["packages", "it"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "shopify_stock"
+engine = "shopify_stock"
+shortcut = "shs"
+categories = ["stock images"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "wordnik"
+engine = "wordnik"
+shortcut = "wnik"
+categories = ["dictionaries", "define"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "emojipedia"
+engine = "emojipedia"
+categories = []
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "wolframalpha_api"
+engine = "wolframalpha_api"
+shortcut = "waa"
+categories = ["general"]
+disabled = true  # unverified; remove when confirmed working

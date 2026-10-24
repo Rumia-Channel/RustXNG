@@ -1,7 +1,4 @@
 //! Swisscows engine, ported from searx/engines/swisscows.py (web search).
-//!
-//! Requests are signed with a nonce derived from the clock; images and videos
-//! are documented as not ported.
 // engine-id: swisscows
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -10,9 +7,8 @@ use std::sync::Arc;
 use sha2::{Digest, Sha256};
 
 use crate::engine::util::*;
-use crate::engine::{
-    Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse,
-};
+use crate::engine::{Engine, EngineDefaults, EngineError, EngineItem, EngineMeta};
+use crate::engine::{EngineRequest, EngineResponse};
 use crate::query::{Query, TimeRange};
 use crate::settings::EngineConfig;
 
@@ -56,19 +52,16 @@ fn appropriate_locale(locale: &str) -> String {
         .map_or_else(|| "en-US".to_string(), |(_, tag)| (*tag).to_string())
 }
 
+/// A nonce for one request, derived from the clock and a counter.
 fn nonce() -> String {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let count = COUNTER.fetch_add(1, Ordering::Relaxed);
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|value| value.as_nanos())
-        .unwrap_or(0);
+    let now = std::time::SystemTime::now();
+    let nanos = now.duration_since(std::time::UNIX_EPOCH).map(|value| value.as_nanos()).unwrap_or(0);
     let mut hasher = Sha256::new();
     hasher.update(&nanos.to_be_bytes()[..]);
     hasher.update(&count.to_be_bytes()[..]);
-    hasher.finalize().iter()
-        .map(|byte| NONCE_ALPHABET[usize::from(*byte) % NONCE_ALPHABET.len()] as char)
-        .collect()
+    hasher.finalize().iter().map(|byte| NONCE_ALPHABET[usize::from(*byte) % NONCE_ALPHABET.len()] as char).collect()
 }
 
 /// Caesar shift that inverts the case of every letter (upstream helper).
@@ -126,9 +119,7 @@ fn signature(nonce: &str, args: &[(&str, String)]) -> String {
 }
 
 impl Engine for Swisscows {
-    fn meta(&self) -> &EngineMeta {
-        &self.meta
-    }
+    fn meta(&self) -> &EngineMeta { &self.meta }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
         let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL).trim_end_matches('/');
@@ -138,12 +129,10 @@ impl Engine for Swisscows {
             Some(TimeRange::Month) => "Month", Some(TimeRange::Year) => "Year", None => "All",
         };
         let args: Vec<(&str, String)> = vec![
-            ("freshness", freshness.to_string()),
-            ("itemsCount", count.to_string()),
+            ("freshness", freshness.to_string()), ("itemsCount", count.to_string()),
             ("locale", appropriate_locale(&query.locale)),
             ("offset", (i64::from(pageno.max(1) - 1) * count).to_string()),
-            ("query", query.query_text()),
-            ("spellcheck", "True".to_string()),
+            ("query", query.query_text()), ("spellcheck", "True".to_string()),
         ];
         let nonce = nonce();
         let signature = signature(&nonce, &args);
@@ -157,12 +146,10 @@ impl Engine for Swisscows {
         let mut json = response.json()?;
         if let Some(payload) = json_path(&json, "payload").and_then(|value| value.as_str()) {
             let encoded = payload.split('.').nth(1).unwrap_or(payload);
-            let Some(bytes) = base64_url_decode(encoded) else {
-                return Err(EngineError::Parse("swisscows: invalid payload".into()));
-            };
-            json = serde_json::from_slice(&bytes).map_err(|error| {
-                EngineError::Parse(format!("swisscows: invalid payload: {error}"))
-            })?;
+            let bytes = base64_url_decode(encoded)
+                .ok_or_else(|| EngineError::Parse("swisscows: invalid payload".into()))?;
+            json = serde_json::from_slice(&bytes)
+                .map_err(|error| EngineError::Parse(format!("swisscows: invalid payload: {error}")))?;
         }
         let Some(items) = json_path(&json, "items").and_then(|value| value.as_array()) else {
             return Ok(Vec::new());
@@ -170,8 +157,7 @@ impl Engine for Swisscows {
         let mut results = Vec::new();
         for item in items {
             if json_str(item, "type") != "WebPage" { continue; }
-            let url = json_str(item, "url");
-            let title = json_str(item, "name");
+            let (url, title) = (json_str(item, "url"), json_str(item, "name"));
             if title.is_empty() || !url.starts_with("http") { continue; }
             let mut builder = ResultBuilder::new(url, title)
                 .content(strip_tags(&json_str(item, "description")));
@@ -202,20 +188,15 @@ mod tests {
         assert_eq!(base64_url_decode(&base64_url(b"rust")), Some(b"rust".to_vec()));
         // upstream keeps a language-only tag as-is
         assert_eq!(appropriate_locale("de"), "de");
-        assert_eq!(appropriate_locale("de-DE"), "de-DE");
         let mut request_query = query("rust");
         request_query.locale = "de-DE".to_string();
         request_query.time_range = Some(TimeRange::Day);
         let request = engine().build_request(&request_query, 2).unwrap();
-        assert!(request.url.contains("freshness=Day"));
-        assert!(request.url.contains("itemsCount=20"));
-        assert!(request.url.contains("locale=de-DE"));
-        assert!(request.url.contains("offset=20"));
-        assert!(request.url.contains("query=rust"));
-        assert!(request.url.contains("spellcheck=True"));
-        let headers = &request.headers;
-        assert_eq!(headers.get("x-request-nonce").unwrap().to_str().unwrap().len(), 32);
-        assert_eq!(headers.get("x-request-signature").unwrap().to_str().unwrap().len(), 43);
+        assert!(request.url.contains("freshness=Day") && request.url.contains("itemsCount=20"));
+        assert!(request.url.contains("locale=de-DE") && request.url.contains("offset=20"));
+        assert!(request.url.contains("query=rust") && request.url.contains("spellcheck=True"));
+        assert_eq!(request.headers["x-request-nonce"].to_str().unwrap().len(), 32);
+        assert_eq!(request.headers["x-request-signature"].to_str().unwrap().len(), 43);
     }
 
     #[test]

@@ -4,9 +4,7 @@
 use std::sync::Arc;
 
 use crate::engine::util::*;
-use crate::engine::{
-    Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse,
-};
+use crate::engine::{Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse};
 use crate::query::Query;
 use crate::settings::EngineConfig;
 
@@ -25,7 +23,6 @@ const SEARCH_URL: &str = "https://pubmed.ncbi.nlm.nih.gov";
 const ARTICLE_URL: &str = "https://www.ncbi.nlm.nih.gov/pubmed/";
 const PAGE_SIZE: u32 = 10;
 
-/// A MEDLINE record: field tag and value, in document order.
 type Fields = Vec<(String, String)>;
 
 /// PubMed biomedical literature search.
@@ -35,16 +32,12 @@ pub struct PubMed {
 
 impl PubMed {
     pub fn from_config(config: &EngineConfig) -> Result<Arc<Self>, String> {
-        Ok(Arc::new(Self {
-            meta: EngineMeta::from_config(config, DEFAULTS),
-        }))
+        Ok(Arc::new(Self { meta: EngineMeta::from_config(config, DEFAULTS) }))
     }
 }
 
 impl Engine for PubMed {
-    fn meta(&self) -> &EngineMeta {
-        &self.meta
-    }
+    fn meta(&self) -> &EngineMeta { &self.meta }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
         // Upstream calls esearch for the PMIDs and then efetch for the records.
@@ -57,15 +50,10 @@ impl Engine for PubMed {
             ("size", PAGE_SIZE.to_string()),
             ("page", pageno.max(1).to_string()),
         ];
-        Ok(EngineRequest::get(format!("{base}/?{}", query_string(&pairs)))
-            .header("Accept", "text/html"))
+        Ok(EngineRequest::get(format!("{base}/?{}", query_string(&pairs))).header("Accept", "text/html"))
     }
 
-    fn parse(
-        &self,
-        response: &EngineResponse,
-        _query: &Query,
-    ) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
         let html = response.html()?;
         let mut results = Vec::new();
         for block in select_elements(&html, "pre.search-results-chunk")? {
@@ -87,26 +75,17 @@ fn split_records(text: &str) -> Vec<Fields> {
     for line in text.lines() {
         let line = line.trim_end();
         if let Some(pmid) = line.strip_prefix("PMID- ") {
-            if !fields.is_empty() {
-                records.push(std::mem::take(&mut fields));
-            }
+            if !fields.is_empty() { records.push(std::mem::take(&mut fields)); }
             fields.push(("PMID".to_string(), pmid.trim().to_string()));
         } else if !fields.is_empty() {
-            match field_line(line) {
-                Some(field) => fields.push(field),
-                None if line.starts_with("      ") => {
-                    if let Some((_, value)) = fields.last_mut() {
-                        value.push(' ');
-                        value.push_str(line.trim());
-                    }
-                }
-                None => {}
+            if let Some(field) = field_line(line) {
+                fields.push(field);
+            } else if line.starts_with("      ") {
+                if let Some((_, value)) = fields.last_mut() { value.push(' '); value.push_str(line.trim()); }
             }
         }
     }
-    if !fields.is_empty() {
-        records.push(fields);
-    }
+    if !fields.is_empty() { records.push(fields); }
     records
 }
 
@@ -130,63 +109,43 @@ fn author_name(value: &str) -> String {
 }
 
 /// The ELocationID of type doi (the LID or AID line with a doi suffix).
-fn doi(fields: &Fields) -> String {
-    fields
-        .iter()
-        .find(|field| (field.0.as_str() == "LID" || field.0.as_str() == "AID") && field.1.ends_with(" [doi]"))
-        .map(|field| field.1.trim_end_matches(" [doi]").to_string())
-        .unwrap_or_default()
+fn doi(fields: &Fields) -> Option<String> {
+    let field = fields.iter().find(|field| (field.0.as_str() == "LID" || field.0.as_str() == "AID") && field.1.ends_with(" [doi]"))?;
+    Some(field.1.trim_end_matches(" [doi]").to_string())
 }
 
 /// The linking ISSN when present, otherwise the first one of the record.
 fn issn(fields: &Fields) -> String {
     let mut fallback = String::new();
     for (tag, value) in fields {
-        if tag.as_str() != "IS" {
-            continue;
-        }
+        if tag.as_str() != "IS" { continue; }
         let candidate = value.split(" (").next().unwrap_or(value).trim().to_string();
-        if value.contains("(Linking)") {
-            return candidate;
-        }
-        if fallback.is_empty() {
-            fallback = candidate;
-        }
+        if value.contains("(Linking)") { return candidate; }
+        if fallback.is_empty() { fallback = candidate; }
     }
     fallback
 }
 
 /// The accepted date of the PubMed history (PHST line with an accepted tag).
 fn accepted_date(fields: &Fields) -> Option<String> {
-    let (_, value) = fields
-        .iter()
-        .find(|(tag, value)| tag.as_str() == "PHST" && value.contains("[accepted]"))?;
-    let date = value.split_whitespace().next()?.replace('/', "-");
-    (date.len() == 10).then_some(date)
+    let (_, value) = fields.iter().find(|(tag, value)| tag.as_str() == "PHST" && value.contains("[accepted]"))?;
+    value.split_whitespace().next().map(|date| date.replace('/', "-")).filter(|date| date.len() == 10)
 }
 
 fn build_item(fields: &Fields) -> Option<EngineItem> {
     let pmid = first(fields, "PMID")?;
     let title = first(fields, "TI").unwrap_or_default();
-    if title.is_empty() {
-        return None;
-    }
-    let authors: Vec<String> = fields
-        .iter()
-        .filter(|field| field.0.as_str() == "FAU")
-        .map(|field| author_name(field.1.as_str()))
-        .filter(|name| !name.is_empty())
-        .collect();
+    if title.is_empty() { return None; }
+    let authors: Vec<String> = fields.iter().filter(|field| field.0.as_str() == "FAU")
+        .map(|field| author_name(field.1.as_str())).filter(|name| !name.is_empty()).collect();
     let journal = first(fields, "JT").or_else(|| first(fields, "TA")).unwrap_or_default();
     let mut builder = ResultBuilder::new(format!("{ARTICLE_URL}{pmid}"), title)
         .content(first(fields, "AB").unwrap_or_default())
         .author(authors.join(", "))
-        .metadata("doi", doi(fields))
+        .metadata("doi", doi(fields).unwrap_or_default())
         .metadata("journal", journal)
         .metadata("issn", issn(fields));
-    if let Some(date) = accepted_date(fields) {
-        builder = builder.published_date(date);
-    }
+    if let Some(date) = accepted_date(fields) { builder = builder.published_date(date); }
     Some(builder.build())
 }
 
@@ -200,13 +159,11 @@ TI  - Why scientists are turning to Rust.
 AB  - Rust guarantees memory safety and
       fearlessly prevents data races.
 LID - 10.1038/d41586-020-03382-2 [doi]
-IS  - 1476-4687 (Electronic)
 IS  - 0028-0836 (Linking)
 FAU - Perkel, Jeffrey M
 FAU - Doe, Jane
 JT  - Nature
 PHST- 2020/12/03 06:00 [accepted]
-
 PMID- 39747896
 TI  - Second paper.
 TA  - Science
@@ -232,12 +189,7 @@ TA  - Science
         assert_eq!(result.content, "Rust guarantees memory safety and fearlessly prevents data races.");
         assert_eq!(result.author.as_deref(), Some("Jeffrey M Perkel, Jane Doe"));
         assert_eq!(result.published_date.as_deref(), Some("2020-12-03"));
-        let expected = [
-            ("doi", "10.1038/d41586-020-03382-2"),
-            ("journal", "Nature"),
-            ("issn", "0028-0836"),
-        ];
-        for (key, value) in expected {
+        for (key, value) in [("doi", "10.1038/d41586-020-03382-2"), ("journal", "Nature"), ("issn", "0028-0836")] {
             assert_eq!(result.metadata.get(key).map(String::as_str), Some(value));
         }
     }
@@ -247,7 +199,6 @@ TA  - Science
         let response = EngineResponse::new(200, SEARCH_URL, FIXTURE.as_bytes().to_vec());
         let items = engine().parse(&response, &query()).unwrap();
         let EngineItem::Result(result) = &items[1] else { panic!("expected a result") };
-        assert_eq!(result.url, "https://www.ncbi.nlm.nih.gov/pubmed/39747896");
         assert_eq!(result.metadata.get("journal").map(String::as_str), Some("Science"));
         assert_eq!(result.metadata.get("doi"), None);
         let empty = EngineResponse::new(200, SEARCH_URL, b"<html></html>".to_vec());

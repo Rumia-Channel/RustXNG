@@ -81,8 +81,8 @@ impl Engine for Fdroid {
             }
             let summary = text_of(element, "span.package-summary").unwrap_or_default();
             let license = text_of(element, "span.package-license").unwrap_or_default();
-            let mut builder = ResultBuilder::new(url, title)
-                .content(format!("{summary} - {license}"));
+            let mut builder =
+                ResultBuilder::new(url, title).content(format!("{summary} - {license}"));
             let thumbnail = attr_of(element, "img.package-icon", "src").unwrap_or_default();
             if !thumbnail.is_empty() {
                 builder = builder.thumbnail(thumbnail);
@@ -118,7 +118,13 @@ mod tests {
     </body></html>"#;
 
     fn engine() -> Arc<Fdroid> {
-        Fdroid::from_config(&EngineConfig::new("fdroid", "fdroid", "fd", &["it", "apps"])).unwrap()
+        Fdroid::from_config(&EngineConfig::new(
+            "fdroid",
+            "fdroid",
+            "fd",
+            &["it", "apps"],
+        ))
+        .unwrap()
     }
 
     fn query(text: &str) -> Query {

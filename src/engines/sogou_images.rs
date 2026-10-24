@@ -47,9 +47,8 @@ impl Engine for SogouImages {
         let body = response.text();
         let pattern = regex::Regex::new(STATE_RE)
             .map_err(|error| EngineError::Parse(format!("invalid state pattern: {error}")))?;
-        let Some(payload) = pattern.captures(&body).and_then(|caps| caps.get(1)) else {
-            return Ok(Vec::new());
-        };
+        let Some(captures) = pattern.captures(&body) else { return Ok(Vec::new()) };
+        let Some(payload) = captures.get(1) else { return Ok(Vec::new()) };
         let Ok(json) = serde_json::from_str::<serde_json::Value>(payload.as_str()) else {
             return Ok(Vec::new());
         };

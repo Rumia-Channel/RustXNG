@@ -51,9 +51,8 @@ impl Engine for Www1x {
         let body = response.text();
         let pattern = regex::Regex::new(DATA_RE)
             .map_err(|error| EngineError::Parse(format!("invalid data pattern: {error}")))?;
-        let Some(payload) = pattern.captures(&body).and_then(|caps| caps.get(1)) else {
-            return Ok(Vec::new());
-        };
+        let Some(captures) = pattern.captures(&body) else { return Ok(Vec::new()) };
+        let Some(payload) = captures.get(1) else { return Ok(Vec::new()) };
         // The XML payload keeps the result markup as escaped text.
         let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL);
         let html = parse_html(&decode_entities(payload.as_str()));

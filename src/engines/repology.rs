@@ -1,7 +1,7 @@
 //! Repology engine, ported from searx/engines/repology.py.
 //!
-//! One result per project: the latest version is the one of a repository
-//! marked newest, or the most common version, like upstream.
+//! One result per project; the latest version is the newest one of the
+//! repositories, or their most common version.
 // engine-id: repology
 
 use std::sync::Arc;
@@ -139,17 +139,10 @@ fn most_common(values: impl Iterator<Item = String>) -> Option<String> {
             counts.push((value, 1));
         }
     }
-    let mut best: Option<(String, usize)> = None;
-    for (value, count) in counts {
-        let better = match &best {
-            Some((_, best_count)) => count > *best_count,
-            None => true,
-        };
-        if better {
-            best = Some((value, count));
-        }
-    }
-    best.map(|(value, _)| value)
+    // A stable sort keeps the first seen value on a tie, like upstream.
+    let mut ranked = counts;
+    ranked.sort_by(|left, right| right.1.cmp(&left.1));
+    ranked.into_iter().next().map(|(value, _)| value)
 }
 
 fn is_http_url(url: &str) -> bool {
@@ -163,16 +156,12 @@ mod tests {
 
     const FIXTURE: &str = r#"{
       "firefox": [
-        {"repo": "debian", "version": "120.0", "status": "newest",
-         "summary": "Mozilla Firefox", "visiblename": "firefox", "licenses": ["MPL-2.0"]},
-        {"repo": "arch", "version": "121.0", "status": "outdated",
-         "summary": "Mozilla Firefox", "visiblename": "firefox", "licenses": ["MPL-2.0"]}
+        {"repo": "debian", "version": "120.0", "status": "newest", "summary": "Mozilla Firefox", "visiblename": "firefox", "licenses": ["MPL-2.0"]},
+        {"repo": "arch", "version": "121.0", "status": "outdated", "summary": "Mozilla Firefox", "visiblename": "firefox", "licenses": ["MPL-2.0"]}
       ],
       "curl": [
-        {"repo": "deb", "version": "8.0", "status": "outdated", "summary": "CLI tool",
-         "visiblename": "curl", "licenses": ["MIT", "curl"]},
-        {"repo": "rpm", "version": "8.0", "status": "outdated", "summary": "CLI tool",
-         "visiblename": "curl", "licenses": ["MIT"]}
+        {"repo": "deb", "version": "8.0", "status": "outdated", "summary": "CLI tool", "visiblename": "curl", "licenses": ["MIT", "curl"]},
+        {"repo": "rpm", "version": "8.0", "status": "outdated", "summary": "CLI tool", "visiblename": "curl", "licenses": ["MIT"]}
       ]
     }"#;
 

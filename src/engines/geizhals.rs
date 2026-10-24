@@ -204,12 +204,16 @@ mod tests {
             request.url,
             "https://geizhals.de/?fs=grafikkarte&pg=1&toggle_all=1"
         );
-        let request = engine().build_request(&query("sort:price grafikkarte"), 2).unwrap();
+        let request = engine()
+            .build_request(&query("sort:price grafikkarte"), 2)
+            .unwrap();
         assert_eq!(
             request.url,
             "https://geizhals.de/?fs=grafikkarte&pg=2&toggle_all=1&sort=p"
         );
-        let request = engine().build_request(&query("grafikkarte sort:desc"), 1).unwrap();
+        let request = engine()
+            .build_request(&query("grafikkarte sort:desc"), 1)
+            .unwrap();
         assert!(request.url.ends_with("&sort=-p"));
     }
 }

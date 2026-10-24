@@ -185,7 +185,11 @@ mod tests {
 
     #[test]
     fn builds_the_paged_url() {
-        let query = Query::parse("camera lens", &crate::engine::EngineRegistry::default(), &[]);
+        let query = Query::parse(
+            "camera lens",
+            &crate::engine::EngineRegistry::default(),
+            &[],
+        );
         let request = engine().build_request(&query, 2).unwrap();
         assert_eq!(
             request.url,

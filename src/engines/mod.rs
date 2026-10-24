@@ -146,6 +146,21 @@ pub mod steam;
 pub mod swisscows;
 pub mod www1x;
 pub mod yep;
+pub mod duden;
+pub mod fdroid;
+pub mod flaticon;
+pub mod flickr;
+pub mod iconify;
+pub mod jisho;
+pub mod pinterest;
+pub mod pixiv;
+pub mod pubmed;
+pub mod quark;
+pub mod repology;
+pub mod shopify_stock;
+pub mod wordnik;
+pub mod emojipedia;
+pub mod wolframalpha_api;
 
 use crate::engine::EngineHandle;
 use crate::settings::EngineConfig;
@@ -274,6 +289,21 @@ pub fn build(config: &EngineConfig) -> Result<EngineHandle, String> {
         "swisscows" => swisscows::Swisscows::from_config(config)?,
         "www1x" => www1x::Www1x::from_config(config)?,
         "yep" => yep::Yep::from_config(config)?,
+        "duden" => duden::Duden::from_config(config)?,
+        "fdroid" => fdroid::Fdroid::from_config(config)?,
+        "flaticon" => flaticon::Flaticon::from_config(config)?,
+        "flickr" => flickr::Flickr::from_config(config)?,
+        "iconify" => iconify::Iconify::from_config(config)?,
+        "jisho" => jisho::Jisho::from_config(config)?,
+        "pinterest" => pinterest::Pinterest::from_config(config)?,
+        "pixiv" => pixiv::Pixiv::from_config(config)?,
+        "pubmed" => pubmed::PubMed::from_config(config)?,
+        "quark" => quark::Quark::from_config(config)?,
+        "repology" => repology::Repology::from_config(config)?,
+        "shopify_stock" => shopify_stock::ShopifyStock::from_config(config)?,
+        "wordnik" => wordnik::Wordnik::from_config(config)?,
+        "emojipedia" => emojipedia::Emojipedia::from_config(config)?,
+        "wolframalpha_api" => wolframalpha_api::WolframAlphaApi::from_config(config)?,
         other => {
             return Err(format!(
                 "engine {:?} uses the unknown engine type {other:?}",
