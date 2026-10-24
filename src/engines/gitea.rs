@@ -22,6 +22,9 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
     timeout: 4.0,
 };
 
+/// Default instance, used when the settings do not name one.
+const BASE_URL: &str = "https://gitea.com";
+
 /// Repository search on a Gitea or Forgejo instance.
 pub struct Gitea {
     meta: EngineMeta,
@@ -34,13 +37,13 @@ impl Gitea {
         }))
     }
 
-    /// Upstream refuses to run without a configured instance.
-    fn base_url(&self) -> Result<String, EngineError> {
+    fn base_url(&self) -> String {
         self.meta
             .base_url
             .clone()
-            .map(|value| value.trim_end_matches('/').to_string())
-            .ok_or_else(|| EngineError::Message("gitea requires a base_url setting".into()))
+            .unwrap_or_else(|| BASE_URL.to_string())
+            .trim_end_matches('/')
+            .to_string()
     }
 
     fn sort(&self) -> String {
@@ -62,7 +65,7 @@ impl Engine for Gitea {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
-        let base = self.base_url()?;
+        let base = self.base_url();
         let pairs = vec![
             ("q", query.query_text()),
             ("limit", self.page_size().to_string()),
@@ -242,13 +245,15 @@ mod tests {
     }
 
     #[test]
-    fn a_missing_base_url_is_an_error() {
+    fn the_public_instance_is_the_default() {
         let config = EngineConfig::new("gitea", "gitea", "gitea", &["it", "repos"]);
         let engine = Gitea::from_config(&config).unwrap();
         let query = Query::parse("demo", &crate::engine::EngineRegistry::default(), &[]);
-        assert!(matches!(
-            engine.build_request(&query, 1),
-            Err(EngineError::Message(message)) if message.contains("base_url")
-        ));
+        let request = engine.build_request(&query, 1).unwrap();
+        assert!(
+            request
+                .url
+                .starts_with("https://gitea.com/api/v1/repos/search?")
+        );
     }
 }

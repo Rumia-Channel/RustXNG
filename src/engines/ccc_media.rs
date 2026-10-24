@@ -76,9 +76,7 @@ impl Engine for CccMedia {
                 for rec in recordings {
                     let mime = json_str(rec, "mime_type");
                     if mime.starts_with("video") {
-                        if iframe_src.is_empty() {
-                            iframe_src = json_str(rec, "recording_url");
-                        } else if mime == "video/mp4" {
+                        if iframe_src.is_empty() || mime == "video/mp4" {
                             iframe_src = json_str(rec, "recording_url");
                         }
                     }

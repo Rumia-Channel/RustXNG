@@ -82,10 +82,8 @@ impl Engine for WolframAlphaApi {
         for pod in &parsed.pods {
             for subpod in &pod.subpods {
                 if !subpod.plaintext.is_empty() && !IMAGE_PODS.contains(&pod.id.as_str()) {
-                    if pod.primary || content.is_empty() {
-                        if pod.id != "Input" {
-                            content = format!("{}: {}", pod.title, subpod.plaintext);
-                        }
+                    if (pod.primary || content.is_empty()) && pod.id != "Input" {
+                        content = format!("{}: {}", pod.title, subpod.plaintext);
                     }
                     if title.is_empty() {
                         title = subpod.plaintext.clone();

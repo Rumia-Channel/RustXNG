@@ -111,7 +111,7 @@ impl Engine for Kickass {
                 .metadata("filesize", filesize);
             results.push((int_or_zero(&seed), builder.build()));
         }
-        results.sort_by(|left, right| right.0.cmp(&left.0));
+        results.sort_by_key(|item| std::cmp::Reverse(item.0));
         Ok(results.into_iter().map(|(_, item)| item).collect())
     }
 }

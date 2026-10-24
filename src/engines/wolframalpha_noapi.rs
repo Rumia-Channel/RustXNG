@@ -101,10 +101,8 @@ impl Engine for WolframAlphaNoapi {
                     if plaintext != "(requires interactivity)" {
                         chunks.push((pod_title.clone(), plaintext.clone()));
                     }
-                    if pod_is_result || content.is_empty() {
-                        if pod_id != "Input" {
-                            content = format!("{pod_title}: {plaintext}");
-                        }
+                    if (pod_is_result || content.is_empty()) && pod_id != "Input" {
+                        content = format!("{pod_title}: {plaintext}");
                     }
                 } else if let Some(src) = json_path(subpod, "img").and_then(|value| value.as_str())
                 {

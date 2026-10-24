@@ -148,7 +148,7 @@ impl Engine for Piratebay {
                 .published_date(published);
             results.push((seeders.parse::<i64>().unwrap_or(0), builder.build()));
         }
-        results.sort_by(|left, right| right.0.cmp(&left.0));
+        results.sort_by_key(|item| std::cmp::Reverse(item.0));
         Ok(results.into_iter().map(|(_, item)| item).collect())
     }
 }

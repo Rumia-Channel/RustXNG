@@ -100,7 +100,7 @@ impl Engine for Geizhals {
             }
             let metadata: Vec<String> = ["div.stars-rating-label", "div.listview__offercount"]
                 .iter()
-                .filter_map(|css| text_of(element, *css))
+                .filter_map(|css| text_of(element, css))
                 .collect();
             let mut builder = ResultBuilder::new(url, title)
                 .content(specs.join(" | "))

@@ -141,7 +141,7 @@ fn most_common(values: impl Iterator<Item = String>) -> Option<String> {
     }
     // A stable sort keeps the first seen value on a tie, like upstream.
     let mut ranked = counts;
-    ranked.sort_by(|left, right| right.1.cmp(&left.1));
+    ranked.sort_by_key(|item| std::cmp::Reverse(item.1));
     ranked.into_iter().next().map(|(value, _)| value)
 }
 
