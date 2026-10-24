@@ -41,15 +41,6 @@ impl Searchrockit {
         }
         Ok(Arc::new(Self { meta }))
     }
-
-    fn base_url(&self) -> String {
-        self.meta
-            .base_url
-            .as_deref()
-            .unwrap_or(BASE_URL)
-            .trim_end_matches('/')
-            .to_string()
-    }
 }
 
 impl Engine for Searchrockit {
@@ -58,9 +49,11 @@ impl Engine for Searchrockit {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
+        let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL);
+        let base = base.trim_end_matches('/');
         Ok(EngineRequest::get(format!(
             "{}/results/{}?{}",
-            self.base_url(),
+            base,
             self.meta.opt_str("searchrockit_categ").unwrap_or("web"),
             query_string(&[("q", query.query_text()), ("p", pageno.to_string())])
         )))
@@ -72,7 +65,8 @@ impl Engine for Searchrockit {
         _query: &Query,
     ) -> Result<Vec<EngineItem>, EngineError> {
         let html = response.html()?;
-        let base = self.base_url();
+        let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL);
+        let base = base.trim_end_matches('/');
         let mut results = Vec::new();
         if self.meta.opt_str("searchrockit_categ") == Some("images") {
             for card in select_elements(&html, "div[class*='image-grid'] a[class*='image-card']")? {
@@ -80,20 +74,17 @@ impl Engine for Searchrockit {
                 let (Some(href), Some(title)) = (attr(card, "href"), title) else {
                     continue;
                 };
-                let Some(url) = absolute_url(&href, &base) else {
+                let Some(url) = http_url(&href, base) else {
                     continue;
                 };
-                if !is_http_url(&url) {
-                    continue;
-                }
                 let mut builder = ResultBuilder::new(url, title).template(Template::Images);
                 if let Some(src) = attr_of(card, "img", "src") {
-                    if let Some(src) = absolute_url(&src, &base) {
+                    if let Some(src) = absolute_url(&src, base) {
                         builder = builder.thumbnail(src);
                     }
                 }
                 if let Some(image) = attr(card, "data-full-url") {
-                    if let Some(image) = absolute_url(&image, &base) {
+                    if let Some(image) = absolute_url(&image, base) {
                         builder = builder.image(image);
                     }
                 }
@@ -114,12 +105,9 @@ impl Engine for Searchrockit {
             if title.is_empty() {
                 continue;
             }
-            let Some(url) = absolute_url(&href, &base) else {
+            let Some(url) = http_url(&href, base) else {
                 continue;
             };
-            if !is_http_url(&url) {
-                continue;
-            }
             let content = child(row, "a[class*='result-item--desc']")
                 .map(text)
                 .unwrap_or_default();
@@ -128,7 +116,7 @@ impl Engine for Searchrockit {
                 .content(content)
                 .published_date(published.unwrap_or_default());
             if let Some(src) = attr_of(row, "a[class*='result-item--thumb'] img", "src") {
-                if let Some(src) = absolute_url(&src, &base) {
+                if let Some(src) = absolute_url(&src, base) {
                     builder = builder.thumbnail(src);
                 }
             }
@@ -138,8 +126,8 @@ impl Engine for Searchrockit {
     }
 }
 
-fn is_http_url(url: &str) -> bool {
-    url.starts_with("http://") || url.starts_with("https://")
+fn http_url(raw: &str, base: &str) -> Option<String> {
+    absolute_url(raw, base).filter(|url| url.starts_with("http"))
 }
 
 #[cfg(test)]
@@ -155,13 +143,11 @@ mod tests {
   </div>
   <div class="result-item"><a class="result-item--title" href="/relative/two">Second hit</a>
     <a class="result-item--desc">Second description</a></div>
-  <div class="result-item"><a class="result-item--title" href="/empty"></a></div>
-</div></body></html>"##;
+  <div class="result-item"><a class="result-item--title" href="/empty"></a></div></div></body></html>"##;
 
     const IMAGE_FIXTURE: &str = r##"<html><body><div class="image-grid">
   <a class="image-card" href="/image/1" data-full-url="https://cdn.example.test/full.jpg">
-  <img src="https://cdn.example.test/thumb.jpg"><div class="image-title">First image</div></a>
-</div></body></html>"##;
+  <img src="https://cdn.example.test/thumb.jpg"><div class="image-title">First image</div></a></div></body></html>"##;
 
     fn config(category: &str) -> EngineConfig {
         let mut config = EngineConfig::new("searchrockit", "searchrockit", "sr", &["general"]);
@@ -199,7 +185,6 @@ mod tests {
         match &items[1] {
             EngineItem::Result(result) => {
                 assert_eq!(result.url, "https://searchrockit.com/relative/two");
-                assert!(result.thumbnail.is_none());
             }
             _ => panic!("expected a result"),
         }

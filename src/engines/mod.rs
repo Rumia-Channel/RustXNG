@@ -38,6 +38,7 @@ pub mod archlinux;
 pub mod artic;
 pub mod artstation;
 pub mod arxiv;
+pub mod astrophysics_data_system;
 pub mod baidu;
 pub mod bandcamp;
 pub mod bilibili;
@@ -54,6 +55,7 @@ pub mod bt4g;
 pub mod btdigg;
 pub mod cachy_os;
 pub mod ccc_media;
+pub mod chatnoir;
 pub mod chefkoch;
 pub mod chinaso;
 pub mod cloudflareai;
@@ -81,11 +83,14 @@ pub mod europepmc;
 pub mod fdroid;
 pub mod findborg;
 pub mod findfiles;
+pub mod findthatmeme;
 pub mod fireball;
 pub mod five_hundred_px;
 pub mod flaticon;
 pub mod flickr;
 pub mod flickr_noapi;
+pub mod frinkiac;
+pub mod fyyd;
 pub mod geizhals;
 pub mod genius;
 pub mod giphy;
@@ -93,6 +98,7 @@ pub mod gitea;
 pub mod github;
 pub mod github_code;
 pub mod gitlab;
+pub mod gmx;
 pub mod goodreads;
 pub mod google;
 pub mod google_images;
@@ -108,6 +114,7 @@ pub mod iconify;
 pub mod il_post;
 pub mod imdb;
 pub mod imgur;
+pub mod ina;
 pub mod invidious;
 pub mod ipernity;
 pub mod iqiyi;
@@ -121,6 +128,7 @@ pub mod lemmy;
 pub mod lib_rs;
 pub mod libretranslate;
 pub mod lingva;
+pub mod lucide;
 pub mod luxxle;
 pub mod magnific;
 pub mod marginalia;
@@ -195,12 +203,15 @@ pub mod startpage;
 pub mod startpagina;
 pub mod steam;
 pub mod swisscows;
+pub mod tiger;
+pub mod tineye;
 pub mod tokyotoshokan;
 pub mod tonline;
 pub mod tootfinder;
 pub mod torznab;
 pub mod tusksearch;
 pub mod unsplash;
+pub mod uxwing;
 pub mod vimeo;
 pub mod wallhaven;
 pub mod wikicommons;
@@ -418,6 +429,19 @@ pub fn build(config: &EngineConfig) -> Result<EngineHandle, String> {
         }
         "radio_browser" => radio_browser::RadioBrowser::from_config(config)?,
         "searchrockit" => searchrockit::Searchrockit::from_config(config)?,
+        "astrophysics_data_system" => {
+            astrophysics_data_system::AstrophysicsDataSystem::from_config(config)?
+        }
+        "chatnoir" => chatnoir::Chatnoir::from_config(config)?,
+        "findthatmeme" => findthatmeme::FindThatMeme::from_config(config)?,
+        "frinkiac" => frinkiac::Frinkiac::from_config(config)?,
+        "fyyd" => fyyd::Fyyd::from_config(config)?,
+        "gmx" => gmx::Gmx::from_config(config)?,
+        "ina" => ina::Ina::from_config(config)?,
+        "lucide" => lucide::Lucide::from_config(config)?,
+        "tiger" => tiger::Tiger::from_config(config)?,
+        "tineye" => tineye::Tineye::from_config(config)?,
+        "uxwing" => uxwing::Uxwing::from_config(config)?,
         other => {
             return Err(format!(
                 "engine {:?} uses the unknown engine type {other:?}",

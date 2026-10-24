@@ -120,7 +120,6 @@ impl Engine for S1SearchRampjs {
 
 /// The JSON value of the payload embedded in the page.
 fn payload(body: &str) -> Option<serde_json::Value> {
-    // Accept the object literal (response: ...) and the JSON form ("response": ...).
     let marker = body.find("__RAMPJS__")?;
     let rest = &body[marker..];
     let start = rest.find('{')?;

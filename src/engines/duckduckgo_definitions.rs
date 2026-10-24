@@ -1,4 +1,5 @@
 //! DuckDuckGo Instant Answer engine, ported from searx/engines/duckduckgo_definitions.py.
+//! The external URL, area and coordinate tables of the upstream infobox are not ported.
 // engine-id: duckduckgo_definitions
 
 use std::collections::BTreeMap;
@@ -110,7 +111,7 @@ impl Engine for DuckDuckGoDefinitions {
                 title: json_str(&json, source_key),
                 url: link.clone(),
             });
-            if as_result && !heading.is_empty() {
+            if as_result && !heading.is_empty() && link.starts_with("http") {
                 items.push(result(link.clone(), &heading, ""));
             }
             infobox_id = link;

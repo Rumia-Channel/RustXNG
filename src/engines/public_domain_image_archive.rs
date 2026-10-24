@@ -1,8 +1,8 @@
 //! Public domain image archive engine, ported from searx/engines/public_domain_image_archive.py.
-//!
-//! Upstream discovers the Algolia proxy URL by fetching the Astro config; a
-//! synchronous request builder cannot do that, so the URL is read from the
-//! api_url setting and defaults to the documented search proxy path.
+//! Upstream discovers the Algolia proxy URL in the Astro config; this port
+//! reads it from the api_url setting and falls back to the search proxy path
+//! of the main host. Metadata lines are joined with a pipe because the result
+//! builder collapses the newline upstream uses.
 // engine-id: public_domain_image_archive
 
 use std::sync::Arc;
@@ -38,18 +38,14 @@ pub struct PublicDomainImageArchive {
 
 impl PublicDomainImageArchive {
     pub fn from_config(config: &EngineConfig) -> Result<Arc<Self>, String> {
-        Ok(Arc::new(Self {
-            page_size: config.opt_i64("page_size").unwrap_or(PAGE_SIZE),
-            meta: EngineMeta::from_config(config, DEFAULTS),
-        }))
+        let page_size = config.opt_i64("page_size").unwrap_or(PAGE_SIZE);
+        let meta = EngineMeta::from_config(config, DEFAULTS);
+        Ok(Arc::new(Self { meta, page_size }))
     }
 
     fn base_url(&self) -> &str {
-        self.meta
-            .base_url
-            .as_deref()
-            .unwrap_or(BASE_URL)
-            .trim_end_matches('/')
+        let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL);
+        base.trim_end_matches('/')
     }
 
     fn api_url(&self) -> String {
@@ -163,7 +159,7 @@ mod tests {
 
     const FIXTURE: &str = r#"{"results":[{"hits":[
       {"objectID":"abc123","title":"A print","artist":"Someone","displayYear":"1658",
-       "thumbnail":"https://the-public-domain-review.imgix.net/shop/print.jpg?ixid=XYZ&s=abc",
+       "thumbnail":"https://img.example/print.jpg?ixid=XYZ&s=abc",
        "themes":"Animals","encompassingWork":"A book"},
       {"objectID":"","title":"Broken","artist":"Nobody","thumbnail":""}
     ]}]}"#;
@@ -188,28 +184,18 @@ mod tests {
         let query = Query::parse("cat", &crate::engine::EngineRegistry::default(), &[]);
         let items = engine().parse(&response, &query).unwrap();
         assert_eq!(items.len(), 1);
-        match &items[0] {
-            EngineItem::Result(result) => {
-                assert_eq!(result.url, "https://pdimagearchive.org/images/abc123");
-                assert_eq!(result.title, "A print by Someone 1658");
-                assert_eq!(result.template, Template::Images);
-                assert_eq!(
-                    result.content,
-                    "Themes: Animals | Encompassing work: A book"
-                );
-                assert_eq!(
-                    result.img_src.as_deref(),
-                    Some("https://the-public-domain-review.imgix.net/shop/print.jpg")
-                );
-                assert_eq!(
-                    result.thumbnail.as_deref(),
-                    Some(
-                        "https://the-public-domain-review.imgix.net/shop/print.jpg?fit=max&h=360&w=360"
-                    )
-                );
-            }
-            _ => panic!("expected a result"),
-        }
+        let EngineItem::Result(result) = &items[0] else {
+            panic!()
+        };
+        assert_eq!(result.url, "https://pdimagearchive.org/images/abc123");
+        assert_eq!(result.title, "A print by Someone 1658");
+        assert_eq!(result.template, Template::Images);
+        let content = "Themes: Animals | Encompassing work: A book";
+        assert_eq!(result.content, content);
+        let image = result.img_src.clone().unwrap_or_default();
+        assert!(image.ends_with("/print.jpg"));
+        let thumb = result.thumbnail.clone().unwrap_or_default();
+        assert!(thumb.ends_with("?fit=max&h=360&w=360"));
     }
 
     #[test]

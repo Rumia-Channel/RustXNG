@@ -1854,3 +1854,89 @@ shortcut = "sr"
 categories = ["general"]
 paging = true
 disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "astrophysics_data_system"
+engine = "astrophysics_data_system"
+shortcut = "ads"
+categories = ["science", "scientific publications"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "chatnoir"
+engine = "chatnoir"
+shortcut = "cha"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "findthatmeme"
+engine = "findthatmeme"
+shortcut = "ftm"
+categories = ["images"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "frinkiac"
+engine = "frinkiac"
+shortcut = "frk"
+categories = ["images"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "fyyd"
+engine = "fyyd"
+shortcut = "fy"
+categories = []
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "gmx"
+engine = "gmx"
+shortcut = "gmx"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "ina"
+engine = "ina"
+shortcut = "in"
+categories = ["videos"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "lucide"
+engine = "lucide"
+shortcut = "luc"
+categories = ["images", "icons"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "tiger"
+engine = "tiger"
+shortcut = "tig"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "tineye"
+engine = "tineye"
+shortcut = "tin"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "uxwing"
+engine = "uxwing"
+shortcut = "ux"
+categories = ["images", "icons"]
+disabled = true  # unverified; remove when confirmed working
