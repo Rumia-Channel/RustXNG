@@ -30,18 +30,14 @@ pub struct AppState {
     pub searcher: Arc<Searcher>,
     /// Overrides the settings base URL (used by the tests).
     pub base_url: Option<String>,
-    /// Optional per client rate limiter (\`server.limiter\`).
+    /// Bot detection / rate limiter (\`server.limiter\`).
     pub limiter: Arc<limiter::Limiter>,
 }
 
 impl AppState {
     pub fn new(searcher: Searcher) -> Self {
         let settings = searcher.settings.clone();
-        let limiter = Arc::new(limiter::Limiter::new(
-            settings.server.limiter,
-            std::time::Duration::from_secs(settings.server.limiter_window),
-            settings.server.limiter_max,
-        ));
+        let limiter = Arc::new(limiter::Limiter::from_settings(&settings));
         Self {
             searcher: Arc::new(searcher),
             base_url: None,

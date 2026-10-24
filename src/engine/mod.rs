@@ -406,6 +406,21 @@ pub trait Engine: Send + Sync {
         response: &EngineResponse,
         query: &Query,
     ) -> Result<Vec<EngineItem>, EngineError>;
+
+    /// Whether this engine queries a local database instead of HTTP
+    /// (upstream `engine_type = "offline"`). Offline engines run
+    /// [`Engine::search_offline`] on a blocking thread.
+    fn is_offline(&self) -> bool {
+        false
+    }
+
+    /// Run the database query. Only called for engines whose
+    /// [`Engine::is_offline`] returns true.
+    fn search_offline(&self, _query: &Query, _pageno: u32) -> Result<Vec<EngineItem>, EngineError> {
+        Err(EngineError::Message(
+            "offline engine without a query implementation".into(),
+        ))
+    }
 }
 
 impl fmt::Debug for dyn Engine {

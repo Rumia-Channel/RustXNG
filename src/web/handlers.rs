@@ -7,6 +7,7 @@ use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
 use serde::Deserialize;
 
+use super::limiter::{ClientAddr, LimiterVerdict};
 use super::preferences::{Preferences, join_list, split_list};
 use super::{
     AboutTemplate, AppState, ErrorTemplate, IndexTemplate, PreferencesTemplate, ResultView,
@@ -56,6 +57,7 @@ pub struct AutocompleteParams {
 pub async fn index(
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
+    peer: ClientAddr,
     headers: HeaderMap,
 ) -> Response {
     if params
@@ -64,7 +66,7 @@ pub async fn index(
         .map(|query| !query.trim().is_empty())
         .unwrap_or(false)
     {
-        return run_search(state, params, headers).await;
+        return run_search(state, params, headers, peer).await;
     }
     search_form(&state, &headers, None)
 }
@@ -73,18 +75,20 @@ pub async fn index(
 pub async fn search_get(
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
+    peer: ClientAddr,
     headers: HeaderMap,
 ) -> Response {
-    run_search(state, params, headers).await
+    run_search(state, params, headers, peer).await
 }
 
 /// `POST /search`.
 pub async fn search_post(
     State(state): State<AppState>,
+    peer: ClientAddr,
     headers: HeaderMap,
     Form(params): Form<SearchParams>,
 ) -> Response {
-    run_search(state, params, headers).await
+    run_search(state, params, headers, peer).await
 }
 
 fn search_form(state: &AppState, headers: &HeaderMap, error: Option<String>) -> Response {
@@ -108,7 +112,12 @@ fn search_form(state: &AppState, headers: &HeaderMap, error: Option<String>) -> 
 }
 
 /// Run a search and render it in the requested format.
-async fn run_search(state: AppState, params: SearchParams, headers: HeaderMap) -> Response {
+async fn run_search(
+    state: AppState,
+    params: SearchParams,
+    headers: HeaderMap,
+    peer: ClientAddr,
+) -> Response {
     let searcher = state.searcher.clone();
     let settings = searcher.settings.clone();
     let preferences = preferences_of(&headers, &state);
@@ -178,20 +187,18 @@ async fn run_search(state: AppState, params: SearchParams, headers: HeaderMap) -
     };
 
     let user = user_info(&headers);
-    if let Err(wait) = state.limiter.check(if user.ip.is_empty() {
-        "unknown"
-    } else {
-        &user.ip
-    }) {
-        let mut response = error_page(
-            &state,
-            StatusCode::TOO_MANY_REQUESTS,
-            &format!("too many requests, retry in {wait} seconds"),
-        );
-        if let Ok(value) = axum::http::HeaderValue::from_str(&wait.to_string()) {
-            response.headers_mut().insert(header::RETRY_AFTER, value);
-        }
-        return response;
+    match state.limiter.check(peer.0, &headers, &format) {
+        LimiterVerdict::Allow => {}
+        LimiterVerdict::Blocked {
+            retry_after,
+            message,
+        } => return limiter_response(&state, retry_after, &message, None),
+        LimiterVerdict::Challenge {
+            retry_after,
+            message,
+            set_cookie,
+        } => return limiter_response(&state, retry_after, &message, Some(&set_cookie)),
+        LimiterVerdict::Redirect => return Redirect::to("/").into_response(),
     }
 
     let request = SearchRequest {
@@ -509,10 +516,10 @@ pub async fn config(State(state): State<AppState>) -> Response {
         "safe_search": settings.search.safe_search,
         "default_theme": settings.ui.default_theme,
         "brand": brand,
-        "limiter": { "enabled": settings.server.limiter },
+        "limiter": { "enabled": state.limiter.is_enabled() },
         "doi_resolvers": [],
         "default_doi_resolver": "",
-        "public_instance": settings.general.public_instance,
+        "public_instance": settings.is_public_instance(),
     });
     axum::Json(body).into_response()
 }
@@ -718,7 +725,15 @@ pub async fn preferences_post(
 pub async fn stats(State(state): State<AppState>) -> Response {
     let settings = state.settings();
     let engines = state.searcher.engine_snapshots();
-    tracing::debug!(clients = state.limiter.tracked(), "rate limiter state");
+    let limiter = state.limiter.stats();
+    tracing::debug!(
+        enabled = limiter.enabled,
+        allowed = limiter.allowed,
+        challenged = limiter.challenged,
+        blocked = limiter.blocked,
+        tracked = limiter.tracked,
+        "rate limiter state"
+    );
     render(StatsTemplate {
         instance_name: settings.general.instance_name.clone(),
         version: VERSION.to_string(),
@@ -889,6 +904,27 @@ pub async fn style() -> Response {
 /// The fallback route.
 pub async fn not_found(State(state): State<AppState>) -> Response {
     error_page(&state, StatusCode::NOT_FOUND, "page not found")
+}
+
+/// A 429 (or limiter challenge) response with the limiter's HTML error page.
+fn limiter_response(
+    state: &AppState,
+    retry_after: u64,
+    message: &str,
+    set_cookie: Option<&str>,
+) -> Response {
+    let mut response = error_page(state, StatusCode::TOO_MANY_REQUESTS, message);
+    if retry_after > 0
+        && let Ok(value) = axum::http::HeaderValue::from_str(&retry_after.to_string())
+    {
+        response.headers_mut().insert(header::RETRY_AFTER, value);
+    }
+    if let Some(cookie) = set_cookie
+        && let Ok(value) = axum::http::HeaderValue::from_str(cookie)
+    {
+        response.headers_mut().append(header::SET_COOKIE, value);
+    }
+    response
 }
 
 fn error_page(state: &AppState, status: StatusCode, message: &str) -> Response {

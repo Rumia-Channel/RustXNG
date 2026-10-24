@@ -57,6 +57,15 @@ using_tor_proxy = false
 # https = "socks5h://127.0.0.1:9050"
 # http = "socks5h://127.0.0.1:9050"
 
+# Response cache.
+# backend = "memory" keeps entries inside the process; backend = "valkey"
+# stores them in Valkey / Redis so several instances share one cache.
+[cache]
+backend = "memory"
+url = "redis://127.0.0.1:6379/0"
+ttl = 300
+max_bytes = 8388608
+
 [plugins]
 enabled = []
 disabled = []
@@ -2187,4 +2196,60 @@ name = "zlibrary"
 engine = "zlibrary"
 categories = ["files", "books"]
 paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "mariadb_server"
+engine = "mariadb_server"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "mongodb"
+engine = "mongodb"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "mysql_server"
+engine = "mysql_server"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "opensemantic"
+engine = "opensemantic"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "postgresql"
+engine = "postgresql"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "recoll"
+engine = "recoll"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "sqlite"
+engine = "sqlite"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "valkey_server"
+engine = "valkey_server"
+categories = ["general"]
 disabled = true  # unverified; remove when confirmed working

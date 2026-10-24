@@ -207,7 +207,8 @@ async fn main() -> ExitCode {
     let mut samples = Vec::new();
     for query in &args.queries {
         for repeat in 0..args.repeats {
-            let mut params = vec![("q", query.as_str()), ("format", "json")];
+            // full=1 keeps the engine timings in the JSON document
+            let mut params = vec![("q", query.as_str()), ("format", "json"), ("full", "1")];
             if !args.time_range.is_empty() {
                 params.push(("time_range", args.time_range.as_str()));
             }

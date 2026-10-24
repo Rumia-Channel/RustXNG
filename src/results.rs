@@ -40,6 +40,8 @@ pub enum Template {
     Map,
     Music,
     Packages,
+    /// Key/value rows from a database backed engine (upstream keyvalue.html).
+    KeyValue,
 }
 
 impl Template {
@@ -51,6 +53,7 @@ impl Template {
             Self::Map => "map",
             Self::Music => "music",
             Self::Packages => "packages",
+            Self::KeyValue => "keyvalue",
         }
     }
 }

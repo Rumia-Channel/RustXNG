@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 
-use crate::cache::ResponseCache;
+use crate::cache::Cache;
 use crate::engine::state::{EngineSnapshot, EngineStates};
 use crate::engine::{EngineHandle, EngineItem, EngineRegistry, FailureKind};
 use crate::metrics::Metrics;
@@ -120,7 +120,7 @@ pub struct Searcher {
     pub settings: Arc<Settings>,
     pub registry: Arc<EngineRegistry>,
     pub network: Arc<Network>,
-    pub cache: Arc<ResponseCache>,
+    pub cache: Arc<Cache>,
     pub states: Arc<EngineStates>,
     pub metrics: Arc<Metrics>,
     pub plugins: Arc<PluginManager>,
@@ -130,12 +130,22 @@ impl Searcher {
     pub fn new(settings: Settings) -> Result<Self, String> {
         let registry = EngineRegistry::from_settings(&settings)?;
         let network = Network::from_settings(&settings).map_err(|error| error.to_string())?;
+        let cache = match settings.cache.backend.as_str() {
+            "valkey" | "redis" => Cache::valkey(
+                &settings.cache.url,
+                Duration::from_secs(settings.cache.ttl.max(1)),
+            ),
+            _ => Cache::memory(
+                Duration::from_secs(settings.cache.ttl.max(1)),
+                settings.cache.max_bytes.max(1024),
+            ),
+        };
         Ok(Self {
             plugins: Arc::new(PluginManager::from_settings(&settings)),
             settings: Arc::new(settings),
             registry: Arc::new(registry),
             network: Arc::new(network),
-            cache: Arc::new(ResponseCache::default()),
+            cache: Arc::new(cache),
             states: Arc::new(EngineStates::new()),
             metrics: Arc::new(Metrics::new()),
         })
@@ -154,27 +164,39 @@ impl Searcher {
             vec![crate::categories::GENERAL.to_string()]
         };
 
-        let mut selected = Vec::new();
-        for engine in self.registry.iter() {
-            let name = engine.name().to_string();
-            if request.disabled_engines.contains(&name) {
-                continue;
-            }
-            if !explicit.is_empty() {
-                if explicit.contains(&name) {
+        // SearXNG ignores unknown engine names: fall back to the default set
+        // when nothing matched, instead of failing the request.
+        let run = |explicit: &[String]| {
+            let mut selected = Vec::new();
+            for engine in self.registry.iter() {
+                let name = engine.name().to_string();
+                if request.disabled_engines.contains(&name) {
+                    continue;
+                }
+                if !explicit.is_empty() {
+                    if explicit
+                        .iter()
+                        .any(|wanted| wanted.eq_ignore_ascii_case(&name))
+                    {
+                        selected.push(engine.clone());
+                    }
+                    continue;
+                }
+                let matches = engine.categories().iter().any(|category| {
+                    let normalised = crate::categories::normalize(category);
+                    wanted_categories
+                        .iter()
+                        .any(|wanted| crate::categories::normalize(wanted) == normalised)
+                });
+                if matches {
                     selected.push(engine.clone());
                 }
-                continue;
             }
-            let matches = engine.categories().iter().any(|category| {
-                let normalised = crate::categories::normalize(category);
-                wanted_categories
-                    .iter()
-                    .any(|wanted| crate::categories::normalize(wanted) == normalised)
-            });
-            if matches {
-                selected.push(engine.clone());
-            }
+            selected
+        };
+        let selected = run(&explicit);
+        if selected.is_empty() && !explicit.is_empty() {
+            return run(&[]);
         }
         selected
     }
@@ -350,6 +372,24 @@ impl Searcher {
         request: &SearchRequest,
         timeout: Duration,
     ) -> Result<Vec<EngineItem>, FailureKind> {
+        // Database backed engines do their work on a blocking thread; the HTTP
+        // path below only applies to network engines.
+        if engine.is_offline() {
+            let handle = Arc::clone(engine);
+            let query = request.query.clone();
+            let pageno = request.pageno;
+            let joined = tokio::time::timeout(
+                timeout,
+                tokio::task::spawn_blocking(move || handle.search_offline(&query, pageno)),
+            )
+            .await;
+            return match joined {
+                Ok(Ok(Ok(items))) => Ok(items),
+                Ok(Ok(Err(error))) => Err(FailureKind::from(&error)),
+                Ok(Err(_)) => Err(FailureKind::Other),
+                Err(_) => Err(FailureKind::Timeout),
+            };
+        }
         let engine_request = engine
             .build_request(&request.query, request.pageno)
             .map_err(|error| FailureKind::from(&error))?;
@@ -509,7 +549,7 @@ mod orchestration_tests {
             settings: Arc::new(settings),
             registry: Arc::new(registry),
             network: Arc::new(network),
-            cache: Arc::new(ResponseCache::default()),
+            cache: Arc::new(Cache::default()),
             states: Arc::new(EngineStates::new()),
             metrics: Arc::new(Metrics::new()),
         }

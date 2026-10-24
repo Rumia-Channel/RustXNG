@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Generate src/i18n.rs from the SearXNG gettext catalogs.
 
-The Rust port does not use GNU gettext at runtime; instead this script bakes a
-small subset of the upstream catalogs
-(searx/translations/*/LC_MESSAGES/messages.po) that corresponds to the English
-UI strings used by the templates in this repository into static Rust tables.
+The Rust port does not use GNU gettext at runtime; instead this script bakes the
+subset of the upstream catalogs (searx/translations/*/LC_MESSAGES/messages.po)
+that corresponds to the English UI strings used by the templates in this
+repository into static Rust tables.
 
 Usage:
     python3 tools/import_translations.py /path/to/searxng [templates_dir] [output.rs]
@@ -15,8 +15,15 @@ The script
      and value attributes),
   2. adds a small list of UI strings that are produced by the Rust code instead
      of the templates (see EXTRA_MSGIDS),
-  3. looks up each string in the catalog of every shipped locale and
-  4. writes src/i18n.rs.
+  3. keeps the msgids that at least one upstream catalog translates as the
+     reference key set,
+  4. imports every locale under searx/translations/ that translates at least one
+     of those msgids (locales with zero coverage are skipped; the source locale
+     'en' is always kept), and
+  5. writes src/i18n.rs, with every catalog using exactly the reference keys.
+
+A locale without a translation for a msgid repeats the English msgid, which
+matches the runtime fallback of Translator::gettext().
 
 Upstream catalogs contain no msgid_plural entries at all, so no plural
 translations can be imported; the generated ngettext therefore selects the
@@ -29,21 +36,9 @@ import re
 import sys
 from pathlib import Path
 
-# Locales shipped with the port.  "en" is the source language (empty catalog)
-# and keeps available_locales() in sync with upstream's translation dirs.
-LOCALES = [
-    "de",
-    "en",
-    "es",
-    "fr",
-    "it",
-    "ja",
-    "ko",
-    "pt_BR",
-    "ru",
-    "uk",
-    "zh_Hans_CN",
-]
+# The source language.  Its catalog repeats the reference msgids and still
+# appears in available_locales().
+SOURCE_LOCALE = "en"
 
 # UI strings that the Rust code renders (they do not appear in the templates):
 # src/web/mod.rs (time range options) and src/web/handlers.rs (safesearch /
@@ -116,32 +111,6 @@ PLURAL_PAIRS = [
     ("Time", "Times"),
 ]
 
-# plural_index bodies, one per locale, copied from the upstream Plural-Forms
-# header (the generated function repeats that comment).
-PLURAL_RULES = {
-    "de": "if n == 1 { 0 } else { 1 }",
-    "en": "if n == 1 { 0 } else { 1 }",
-    "es": "if n == 1 { 0 } else { 1 }",
-    "it": "if n == 1 { 0 } else { 1 }",
-    "ja": "0",
-    "ko": "0",
-    "zh_Hans_CN": "0",
-    "fr": "if n > 1 { 1 } else { 0 }",
-    "pt_BR": "if n > 1 { 1 } else { 0 }",
-    "ru": (
-        "if n % 10 == 1 && n % 100 != 11 { 0 }"
-        " else if n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) { 1 }"
-        " else if n % 10 == 0 || (n % 10 >= 5 && n % 10 <= 9) || (n % 100 >= 11 && n % 100 <= 14) { 2 }"
-        " else { 3 }"
-    ),
-    "uk": (
-        "if n % 10 == 1 && n % 100 != 11 { 0 }"
-        " else if n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) { 1 }"
-        " else if n % 10 == 0 || (n % 10 >= 5 && n % 10 <= 9) || (n % 100 >= 11 && n % 100 <= 14) { 2 }"
-        " else { 3 }"
-    ),
-}
-
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -206,15 +175,174 @@ def parse_po(path: Path) -> dict:
     return entries
 
 
-def plural_forms(path: Path) -> str | None:
-    """The Plural-Forms header value of a catalog, or None."""
+def plural_header(path: Path):
+    """Return (nplurals, expression) from a catalog header, or None."""
+    if not path.is_file():
+        return None
     header = ""
     for line in read_text(path).splitlines():
         line = line.strip()
         if line.startswith('"') and line.endswith('"'):
             header += unquote(line)
-    match = re.search(r"Plural-Forms:\s*(.*?)\\n", header)
-    return match.group(1).strip() if match else None
+    match = re.search(r"Plural-Forms:\s*([^\n]+)", header)
+    if not match:
+        return None
+    value = match.group(1).strip().rstrip(";")
+    nplurals = re.search(r"nplurals=(\d+)", value)
+    if not nplurals:
+        return None
+    expression = value.split("plural=", 1)[1] if "plural=" in value else "0"
+    return int(nplurals.group(1)), expression
+
+
+# Tokens of the C plural expressions in the PO headers.  The expressions only
+# use n, integer literals, comparisons, &&, ||, !, %, parentheses and the
+# ternary operator.
+PLURAL_TOKEN_RE = re.compile(r"\d+|[A-Za-z_]\w*|&&|\|\||==|!=|<=|>=|[?:!()%<>+\-*/]")
+
+
+class PluralParser:
+    """Recursive-descent parser for one Plural-Forms expression."""
+
+    def __init__(self, text: str):
+        self.tokens = PLURAL_TOKEN_RE.findall(text)
+        self.index = 0
+
+    def peek(self):
+        if self.index < len(self.tokens):
+            return self.tokens[self.index]
+        return None
+
+    def take(self, expected=None):
+        token = self.peek()
+        if expected is not None and token != expected:
+            raise ValueError("expected %r, got %r" % (expected, token))
+        self.index += 1
+        return token
+
+    def parse(self):
+        node = self.ternary()
+        if self.peek() is not None:
+            raise ValueError("trailing tokens: %r" % (self.tokens[self.index:],))
+        return node
+
+    def ternary(self):
+        condition = self.disjunction()
+        if self.peek() == "?":
+            self.take("?")
+            yes = self.ternary()
+            self.take(":")
+            no = self.ternary()
+            return ("?", condition, yes, no)
+        return condition
+
+    def disjunction(self):
+        node = self.conjunction()
+        while self.peek() == "||":
+            self.take()
+            node = ("binary", "||", node, self.conjunction())
+        return node
+
+    def conjunction(self):
+        node = self.equality()
+        while self.peek() == "&&":
+            self.take()
+            node = ("binary", "&&", node, self.equality())
+        return node
+
+    def equality(self):
+        node = self.relational()
+        while self.peek() in ("==", "!="):
+            operator = self.take()
+            node = ("binary", operator, node, self.relational())
+        return node
+
+    def relational(self):
+        node = self.additive()
+        while self.peek() in ("<", ">", "<=", ">="):
+            operator = self.take()
+            node = ("binary", operator, node, self.additive())
+        return node
+
+    def additive(self):
+        node = self.multiplicative()
+        while self.peek() in ("+", "-"):
+            operator = self.take()
+            node = ("binary", operator, node, self.multiplicative())
+        return node
+
+    def multiplicative(self):
+        node = self.unary()
+        while self.peek() in ("*", "/", "%"):
+            operator = self.take()
+            node = ("binary", operator, node, self.unary())
+        return node
+
+    def unary(self):
+        if self.peek() == "!":
+            self.take()
+            return ("not", self.unary())
+        return self.primary()
+
+    def primary(self):
+        token = self.peek()
+        if token == "(":
+            self.take()
+            node = self.ternary()
+            self.take(")")
+            return node
+        if token == "n":
+            self.take()
+            return ("n",)
+        if token is not None and token.isdigit():
+            self.take()
+            return ("number", int(token))
+        raise ValueError("unexpected token %r" % (token,))
+
+
+def render_plural(node) -> str:
+    """Render a parsed plural expression as a Rust expression."""
+    kind = node[0]
+    if kind == "number":
+        return str(node[1])
+    if kind == "n":
+        return "n"
+    if kind == "not":
+        return "!(%s)" % render_plural(node[1])
+    if kind == "binary":
+        return "(%s %s %s)" % (render_plural(node[2]), node[1], render_plural(node[3]))
+    if kind == "?":
+        return "if %s { %s } else { %s }" % (
+            render_condition(node[1]),
+            render_plural(node[2]),
+            render_plural(node[3]),
+        )
+    raise ValueError("unknown plural node %r" % (kind,))
+
+
+def render_condition(node) -> str:
+    """Render a boolean plural expression without a redundant outer pair."""
+    rendered = render_plural(node)
+    if rendered.startswith("(") and rendered.endswith(")"):
+        return rendered[1:-1]
+    return rendered
+
+
+def plural_body(path: Path) -> str:
+    """The body of one plural_index() match arm."""
+    parsed = plural_header(path)
+    if parsed is None:
+        return "if n == 1 { 0 } else { 1 }"
+    nplurals, expression = parsed
+    if nplurals == 1:
+        return "0"
+    node = PluralParser(expression).parse()
+    if node[0] == "?":
+        return render_plural(node)
+    if node[0] == "number":
+        return str(node[1])
+    # A bare condition is the gettext shorthand for "index 1 when true".
+    return "if %s { 1 } else { 0 }" % render_condition(node)
 
 
 def template_strings(directory: Path) -> list:
@@ -315,29 +443,51 @@ def main() -> int:
     templates = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("templates")
     output = Path(sys.argv[3]) if len(sys.argv) > 3 else Path("src/i18n.rs")
 
-    msgids = template_strings(templates)
+    candidates = template_strings(templates)
     for extra in EXTRA_MSGIDS:
-        if extra not in msgids:
-            msgids.append(extra)
+        if extra not in candidates:
+            candidates.append(extra)
 
+    translations = upstream / "searx" / "translations"
+    catalog_paths = {}
     catalogs = {}
-    for locale in LOCALES:
-        po = upstream / "searx" / "translations" / locale / "LC_MESSAGES" / "messages.po"
-        if not po.exists():
-            print("warning: no catalog for %s" % locale, file=sys.stderr)
-            continue
+    for po in sorted(translations.glob("*/LC_MESSAGES/messages.po")):
+        locale = po.parent.parent.name
+        catalog_paths[locale] = po
         catalogs[locale] = parse_po(po)
+    if not catalogs:
+        print("error: no catalogs under %s" % translations, file=sys.stderr)
+        return 1
+    if SOURCE_LOCALE not in catalogs:
+        print("warning: no catalog for %s" % SOURCE_LOCALE, file=sys.stderr)
+        catalog_paths[SOURCE_LOCALE] = translations / SOURCE_LOCALE / "LC_MESSAGES" / "messages.po"
+        catalogs[SOURCE_LOCALE] = {}
 
-    shipped = [locale for locale in LOCALES if locale in catalogs]
+    # The reference key set: every UI msgid that at least one catalog translates.
+    msgids = [
+        msgid
+        for msgid in candidates
+        if any(lookup(catalog, msgid) is not None for catalog in catalogs.values())
+    ]
+
+    shipped = []
+    for locale in sorted(catalogs):
+        catalog = catalogs[locale]
+        translated = sum(1 for msgid in msgids if lookup(catalog, msgid) not in (None, msgid))
+        if locale == SOURCE_LOCALE or translated:
+            shipped.append(locale)
+        else:
+            print("skipping %s (no translations for the UI msgids)" % locale, file=sys.stderr)
+
     lines = []
     lines.append("//! gettext-style message catalog, ported from searx/translations/*/LC_MESSAGES/messages.po.")
     lines.append("//!")
     lines.append("//! Generated by tools/import_translations.py; do not edit by hand.")
     lines.append("//!")
     lines.append("//! Only strings used by templates/*.html (plus a handful of UI strings the")
-    lines.append("//! Rust code renders, see the generator) are kept.  A locale without a")
-    lines.append("//! translation for a msgid falls back to the English msgid, and a locale the")
-    lines.append("//! instance does not ship falls back to 'en'.")
+    lines.append("//! Rust code renders, see the generator) are kept.  Every catalog uses the")
+    lines.append("//! same msgid keys; a locale without a translation repeats the English msgid,")
+    lines.append("//! and a locale the instance does not ship falls back to 'en'.")
     lines.append("")
     lines.append("/// The translator of one UI locale.")
     lines.append("#[derive(Debug, Clone, Copy, PartialEq, Eq)]")
@@ -346,6 +496,7 @@ def main() -> int:
     lines.append("}")
     lines.append("")
     lines.append("/// The locales shipped with the port (the source locale 'en' included).")
+    lines.append("#[rustfmt::skip]")
     lines.append("static SHIPPED_LOCALES: &[&str] = &[")
     lines.append("    " + ", ".join('"%s"' % locale for locale in shipped) + ",")
     lines.append("];")
@@ -355,12 +506,20 @@ def main() -> int:
     for locale in shipped:
         catalog = catalogs[locale]
         pairs = []
+        translated = 0
         for msgid in msgids:
             value = lookup(catalog, msgid)
-            if value is not None and value != msgid:
-                pairs.append((msgid, value))
-        stats[locale] = len(pairs)
-        lines.append("/// Translations of %s." % locale)
+            if value is None:
+                value = msgid
+            elif value != msgid:
+                translated += 1
+            pairs.append((msgid, value))
+        stats[locale] = translated
+        if locale == SOURCE_LOCALE:
+            lines.append("/// The English source catalog (every msgid maps to itself).")
+        else:
+            lines.append("/// Translations of %s." % locale)
+        lines.append("#[rustfmt::skip]")
         lines.append("static %s: &[(&str, &str)] = &[" % const_name(locale))
         for msgid, value in pairs:
             lines.append("    (%s, %s)," % (rust_string(msgid), rust_string(value)))
@@ -372,32 +531,30 @@ def main() -> int:
     lines.append("    messages: &'static [(&'static str, &'static str)],")
     lines.append("}")
     lines.append("")
+    lines.append("#[rustfmt::skip]")
     lines.append("static CATALOGS: &[Catalog] = &[")
     for locale in shipped:
-        lines.append("    Catalog {")
-        lines.append('        locale: "%s",' % locale)
-        lines.append("        messages: %s," % const_name(locale))
-        lines.append("    },")
+        lines.append('    Catalog { locale: "%s", messages: %s },' % (locale, const_name(locale)))
     lines.append("];")
     lines.append("")
     lines.append("/// Plural form selection, copied from the Plural-Forms header of each")
     lines.append("/// upstream catalog.")
+    lines.append("#[rustfmt::skip]")
+    lines.append("#[allow(unused_comparisons)] // the rules are copied verbatim from upstream")
     lines.append("fn plural_index(locale: &str, n: u64) -> usize {")
     lines.append("    match locale {")
     for locale in shipped:
-        rule = PLURAL_RULES.get(locale)
-        if rule is None:
-            continue
-        lines.append('        "%s" => %s,' % (locale, rule))
+        lines.append('        "%s" => %s,' % (locale, plural_body(catalog_paths[locale])))
     lines.append("        _ => if n == 1 { 0 } else { 1 },")
     lines.append("    }")
     lines.append("}")
     lines.append("")
     lines.append("/// The (singular, plural) pairs the UI uses with ngettext.")
-    lines.append("pub static NGETTEXT_PAIRS: &[(&str, &str)] = &[")
-    for singular, plural in PLURAL_PAIRS:
-        lines.append("    (%s, %s)," % (rust_string(singular), rust_string(plural)))
-    lines.append("];")
+    pairs = ", ".join(
+        "(%s, %s)" % (rust_string(singular), rust_string(plural))
+        for singular, plural in PLURAL_PAIRS
+    )
+    lines.append("pub static NGETTEXT_PAIRS: &[(&str, &str)] = &[%s];" % pairs)
     lines.append("")
     lines.append("/// Plural form translations.  The upstream catalogs contain no msgid_plural")
     lines.append("/// entries, so this table stays empty and ngettext falls back to the English")
@@ -426,6 +583,14 @@ def main() -> int:
     lines.append("    }")
     lines.append("    let language = normalized.split('_').next().unwrap_or(\"\");")
     lines.append("    if language.eq_ignore_ascii_case(\"zh\") {")
+    lines.append("        let lower = normalized.to_ascii_lowercase();")
+    lines.append("        if lower.starts_with(\"zh_hant\")")
+    lines.append("            || lower.starts_with(\"zh_tw\")")
+    lines.append("            || lower.starts_with(\"zh_hk\")")
+    lines.append("            || lower.starts_with(\"zh_mo\")")
+    lines.append("        {")
+    lines.append("            return \"zh_Hant_TW\";")
+    lines.append("        }")
     lines.append("        return \"zh_Hans_CN\";")
     lines.append("    }")
     lines.append("    for candidate in SHIPPED_LOCALES {")
@@ -448,7 +613,9 @@ def main() -> int:
     lines.append("    }")
     lines.append("")
     lines.append("    fn catalog(&self) -> Option<&'static Catalog> {")
-    lines.append("        CATALOGS.iter().find(|catalog| catalog.locale == self.locale)")
+    lines.append("        CATALOGS")
+    lines.append("            .iter()")
+    lines.append("            .find(|catalog| catalog.locale == self.locale)")
     lines.append("    }")
     lines.append("")
     lines.append("    /// The translation of msgid, or msgid itself when the catalog has none.")
@@ -497,6 +664,8 @@ def main() -> int:
     lines.append("        assert_eq!(for_locale(\"de-DE\").locale(), \"de\");")
     lines.append("        assert_eq!(for_locale(\"pt-BR\").locale(), \"pt_BR\");")
     lines.append("        assert_eq!(for_locale(\"zh-CN\").locale(), \"zh_Hans_CN\");")
+    lines.append("        assert_eq!(for_locale(\"zh-TW\").locale(), \"zh_Hant_TW\");")
+    lines.append("        assert_eq!(for_locale(\"zh-Hant\").locale(), \"zh_Hant_TW\");")
     lines.append("        assert_eq!(for_locale(\"ja_JP\").locale(), \"ja\");")
     lines.append("    }")
     lines.append("")
@@ -507,6 +676,26 @@ def main() -> int:
     lines.append("        assert!(locales.contains(&\"ja\"));")
     lines.append("        assert!(locales.contains(&\"de\"));")
     lines.append("        assert!(locales.contains(&\"zh_Hans_CN\"));")
+    lines.append("    }")
+    lines.append("")
+    lines.append("    #[test]")
+    lines.append("    fn every_shipped_locale_resolves_to_itself() {")
+    lines.append("        for locale in available_locales() {")
+    lines.append("            assert_eq!(for_locale(locale).locale(), *locale);")
+    lines.append("        }")
+    lines.append("    }")
+    lines.append("")
+    lines.append("    #[test]")
+    lines.append("    fn every_catalog_uses_the_english_key_set() {")
+    lines.append("        let reference: Vec<&str> = MESSAGES_EN.iter().map(|(key, _)| *key).collect();")
+    lines.append("        for catalog in CATALOGS {")
+    lines.append("            let keys: Vec<&str> = catalog.messages.iter().map(|(key, _)| *key).collect();")
+    lines.append("            assert_eq!(")
+    lines.append("                keys, reference,")
+    lines.append("                \"catalog {} does not use the reference msgids\",")
+    lines.append("                catalog.locale")
+    lines.append("            );")
+    lines.append("        }")
     lines.append("    }")
     lines.append("")
     lines.append("    #[test]")
@@ -525,8 +714,23 @@ def main() -> int:
     lines.append("        assert_eq!(japanese.ngettext(\"Engine\", \"Engines\", 5), singular);")
     lines.append("        // French uses the plural for n > 1 (nplurals=2).")
     lines.append("        let french = for_locale(\"fr\");")
-    lines.append("        assert_eq!(french.ngettext(\"Engine\", \"Engines\", 1), french.gettext(\"Engine\"));")
+    lines.append("        assert_eq!(")
+    lines.append("            french.ngettext(\"Engine\", \"Engines\", 1),")
+    lines.append("            french.gettext(\"Engine\")")
+    lines.append("        );")
     lines.append("        assert_eq!(french.ngettext(\"Engine\", \"Engines\", 2), \"Engines\");")
+    lines.append("    }")
+    lines.append("")
+    lines.append("    #[test]")
+    lines.append("    fn plural_rules_follow_the_upstream_headers() {")
+    lines.append("        assert_eq!(plural_index(\"ar\", 0), 0);")
+    lines.append("        assert_eq!(plural_index(\"ar\", 2), 2);")
+    lines.append("        assert_eq!(plural_index(\"ar\", 11), 4);")
+    lines.append("        assert_eq!(plural_index(\"pl\", 2), 1);")
+    lines.append("        assert_eq!(plural_index(\"pl\", 5), 2);")
+    lines.append("        assert_eq!(plural_index(\"ro\", 0), 1);")
+    lines.append("        assert_eq!(plural_index(\"ro\", 20), 2);")
+    lines.append("        assert_eq!(plural_index(\"ga\", 7), 3);")
     lines.append("    }")
     lines.append("")
     lines.append("    #[test]")

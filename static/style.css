@@ -62,3 +62,22 @@ footer { color: var(--muted); font-size: .8rem; border-top: 1px solid var(--bord
 table { border-collapse: collapse; width: 100%; font-size: .9rem; }
 th, td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--border); }
 pre.error { background: var(--card); padding: 1rem; border-radius: .5rem; overflow-x: auto; }
+
+/* Key/value rows from database backed engines */
+.result-keyvalue {
+  border-collapse: collapse;
+  margin: 0.4rem 0;
+  font-size: 0.9rem;
+}
+.result-keyvalue th,
+.result-keyvalue td {
+  border: 1px solid var(--border, #d0d0d0);
+  padding: 0.2rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+.result-keyvalue th {
+  background: var(--surface, #f5f5f5);
+  font-weight: 600;
+  white-space: nowrap;
+}

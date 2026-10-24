@@ -11,7 +11,7 @@ use std::time::Duration;
 use reqwest::header::{HeaderMap, HeaderValue};
 use tracing::debug;
 
-use crate::cache::{CachedResponse, ResponseCache};
+use crate::cache::{Cache, CachedResponse};
 use crate::engine::{EngineRequest, EngineResponse, FailureKind, Method};
 use crate::settings::Settings;
 
@@ -153,7 +153,7 @@ impl Network {
         &self,
         request: EngineRequest,
         timeout: Duration,
-        cache: Option<&ResponseCache>,
+        cache: Option<&Cache>,
     ) -> Result<EngineResponse, NetworkError> {
         let body_repr = if let Some(json) = &request.json {
             json.to_string()
@@ -169,9 +169,9 @@ impl Network {
             Method::Get => "GET",
             Method::Post => "POST",
         };
-        let cache_key = ResponseCache::key(method, &request.url, &body_repr);
+        let cache_key = Cache::key(method, &request.url, &body_repr);
         if let Some(cache) = cache {
-            if let Some(cached) = cache.get(&cache_key) {
+            if let Some(cached) = cache.get(&cache_key).await {
                 debug!(url = %request.url, "cache hit");
                 return Ok(EngineResponse {
                     status: cached.status,
@@ -182,23 +182,30 @@ impl Network {
             }
         }
 
+        let deadline = tokio::time::Instant::now() + timeout;
         let mut attempt = 0;
         loop {
             attempt += 1;
-            let outcome = self.send(&request, timeout).await;
+            let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+            if remaining.is_zero() {
+                return Err(NetworkError::Timeout);
+            }
+            let outcome = self.send(&request, remaining).await;
             match outcome {
                 Ok(response) => {
                     if let Some(cache) = cache {
                         if response.status == 200 && !response.body.is_empty() {
-                            cache.set(
-                                &cache_key,
-                                CachedResponse {
-                                    status: response.status,
-                                    final_url: response.final_url.clone(),
-                                    headers: response.headers.clone(),
-                                    body: std::sync::Arc::new(response.body.clone()),
-                                },
-                            );
+                            cache
+                                .set(
+                                    &cache_key,
+                                    CachedResponse {
+                                        status: response.status,
+                                        final_url: response.final_url.clone(),
+                                        headers: response.headers.clone(),
+                                        body: std::sync::Arc::new(response.body.clone()),
+                                    },
+                                )
+                                .await;
                         }
                     }
                     if response.status >= 400 {
@@ -214,8 +221,16 @@ impl Network {
                     return Ok(response);
                 }
                 Err(error) if attempt <= self.retries && is_retryable(&error) => {
+                    // never retry a timeout: the engine deadline already elapsed
+                    if matches!(error, NetworkError::Timeout) {
+                        return Err(error);
+                    }
+                    let backoff = Duration::from_millis(250 * attempt as u64);
+                    if tokio::time::Instant::now() + backoff >= deadline {
+                        return Err(error);
+                    }
                     debug!(url = %request.url, %error, "retrying request");
-                    tokio::time::sleep(Duration::from_millis(250 * attempt as u64)).await;
+                    tokio::time::sleep(backoff).await;
                 }
                 Err(error) => return Err(error),
             }
@@ -292,7 +307,9 @@ impl Network {
 
 fn is_retryable(error: &NetworkError) -> bool {
     match error {
-        NetworkError::Transport(_) | NetworkError::Timeout => true,
+        NetworkError::Transport(_) => true,
+        // a timeout already consumed the whole engine budget
+        NetworkError::Timeout => false,
         NetworkError::Status { status, .. } => *status == 429 || *status >= 500,
         NetworkError::Build(_) => false,
     }

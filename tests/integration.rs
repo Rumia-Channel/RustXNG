@@ -12,7 +12,7 @@ use http_body_util::BodyExt;
 use tower::ServiceExt;
 
 use rustxng::aggregator::Searcher;
-use rustxng::settings::{EngineConfig, Settings};
+use rustxng::settings::{EngineConfig, LimiterSettings, Settings};
 use rustxng::web::{AppState, router};
 
 /// The JSON payload the fake Mwmbl engine answers with.
@@ -362,7 +362,7 @@ async fn image_proxy_is_disabled_by_default() {
 async fn the_rate_limiter_answers_429_after_the_limit() {
     let base_url = start_fake_engine().await;
     let mut settings = settings_for(&base_url);
-    settings.server.limiter = true;
+    settings.server.limiter = LimiterSettings::Enabled(true);
     settings.server.limiter_max = 2;
     settings.server.limiter_window = 60;
     let app = app(settings);

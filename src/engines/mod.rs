@@ -140,6 +140,8 @@ pub mod lucide;
 pub mod luxxle;
 pub mod magnific;
 pub mod marginalia;
+#[cfg(feature = "db-engines")]
+pub mod mariadb_server;
 pub mod mastodon;
 pub mod material_icons;
 pub mod mediathekviewweb;
@@ -149,9 +151,13 @@ pub mod metacpan;
 pub mod microsoft_learn;
 pub mod mixcloud;
 pub mod mojeek;
+#[cfg(feature = "db-engines")]
+pub mod mongodb;
 pub mod moviepilot;
 pub mod mozhi;
 pub mod mwmbl;
+#[cfg(feature = "db-engines")]
+pub mod mysql_server;
 pub mod naver;
 pub mod neocities;
 pub mod neosearch;
@@ -166,6 +172,7 @@ pub mod open_meteo;
 pub mod openalex;
 pub mod openclipart;
 pub mod openlibrary;
+pub mod opensemantic;
 pub mod openstreetmap;
 pub mod openverse;
 pub mod pdbe;
@@ -180,6 +187,8 @@ pub mod pixabay;
 pub mod pixiv;
 pub mod pkg_go_dev;
 pub mod podchaser;
+#[cfg(feature = "db-engines")]
+pub mod postgresql;
 pub mod privacywall;
 pub mod public_domain_image_archive;
 pub mod pubmed;
@@ -190,6 +199,7 @@ pub mod r1337x;
 pub mod r360search;
 pub mod r360search_videos;
 pub mod radio_browser;
+pub mod recoll;
 pub mod repology;
 pub mod resulthunter;
 pub mod reuters;
@@ -217,6 +227,8 @@ pub mod soundcloud;
 pub mod sourcehut;
 pub mod spotify;
 pub mod springer;
+#[cfg(feature = "db-engines")]
+pub mod sqlite;
 pub mod stackexchange;
 pub mod startpage;
 pub mod startpagina;
@@ -235,6 +247,8 @@ pub mod translated;
 pub mod tusksearch;
 pub mod unsplash;
 pub mod uxwing;
+#[cfg(feature = "db-engines")]
+pub mod valkey_server;
 pub mod vimeo;
 pub mod voidlinux;
 pub mod vuhuv;
@@ -506,6 +520,20 @@ pub fn build(config: &EngineConfig) -> Result<EngineHandle, String> {
         "duckduckgo_weather" => duckduckgo_weather::DuckDuckGoWeather::from_config(config)?,
         "yandex_music" => yandex_music::YandexMusic::from_config(config)?,
         "zlibrary" => zlibrary::Zlibrary::from_config(config)?,
+        #[cfg(feature = "db-engines")]
+        "mariadb_server" => mariadb_server::MariadbServer::from_config(config)?,
+        #[cfg(feature = "db-engines")]
+        "mongodb" => mongodb::Mongodb::from_config(config)?,
+        #[cfg(feature = "db-engines")]
+        "mysql_server" => mysql_server::MysqlServer::from_config(config)?,
+        "opensemantic" => opensemantic::OpenSemantic::from_config(config)?,
+        #[cfg(feature = "db-engines")]
+        "postgresql" => postgresql::Postgresql::from_config(config)?,
+        "recoll" => recoll::Recoll::from_config(config)?,
+        #[cfg(feature = "db-engines")]
+        "sqlite" => sqlite::Sqlite::from_config(config)?,
+        #[cfg(feature = "db-engines")]
+        "valkey_server" => valkey_server::ValkeyServer::from_config(config)?,
         other => {
             return Err(format!(
                 "engine {:?} uses the unknown engine type {other:?}",

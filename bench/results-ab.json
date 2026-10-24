@@ -1,0 +1,122 @@
+{
+  "a": "http://127.0.0.1:8899",
+  "b": "http://127.0.0.1:8001",
+  "engines": {
+    "wikipedia": {
+      "a": {
+        "n": 16,
+        "mean": 119.5,
+        "median": 0.4,
+        "p95": 582.9,
+        "max": 997.1
+      },
+      "b": {
+        "n": 16,
+        "mean": 113.0,
+        "median": 97.9,
+        "p95": 103.3,
+        "max": 325.8
+      },
+      "overlap_at_10": 0.75,
+      "top1_agreement": 0.0,
+      "found_a": 0.25,
+      "found_b": 0.0,
+      "errors": []
+    },
+    "hackernews": {
+      "a": {
+        "n": 16,
+        "mean": 229.7,
+        "median": 160.3,
+        "p95": 466.2,
+        "max": 919.4
+      },
+      "b": {
+        "n": 16,
+        "mean": 552.6,
+        "median": 462.3,
+        "p95": 1009.5,
+        "max": 1016.4
+      },
+      "overlap_at_10": 1.0,
+      "top1_agreement": 1.0,
+      "found_a": 1.0,
+      "found_b": 1.0,
+      "errors": []
+    },
+    "arxiv": {
+      "a": {
+        "n": 16,
+        "mean": 9.5,
+        "median": 6.5,
+        "p95": 14.1,
+        "max": 51.8
+      },
+      "b": {
+        "n": 16,
+        "mean": 23.6,
+        "median": 20.5,
+        "p95": 24.1,
+        "max": 63.5
+      },
+      "overlap_at_10": 1.0,
+      "top1_agreement": 1.0,
+      "found_a": 1.0,
+      "found_b": 1.0,
+      "errors": []
+    },
+    "bing": {
+      "a": {
+        "n": 16,
+        "mean": 68.7,
+        "median": 45.6,
+        "p95": 148.6,
+        "max": 218.1
+      },
+      "b": {
+        "n": 16,
+        "mean": 129.5,
+        "median": 128.3,
+        "p95": 170.4,
+        "max": 181.7
+      },
+      "overlap_at_10": 0.875,
+      "top1_agreement": 0.5,
+      "found_a": 0.625,
+      "found_b": 0.5,
+      "errors": []
+    },
+    "lemmy": {
+      "a": {
+        "n": 16,
+        "mean": 173.7,
+        "median": 136.8,
+        "p95": 319.4,
+        "max": 811.0
+      },
+      "b": {
+        "n": 16,
+        "mean": 2107.5,
+        "median": 2442.7,
+        "p95": 3010.5,
+        "max": 3012.0
+      },
+      "overlap_at_10": 0.0,
+      "top1_agreement": 0.0,
+      "found_a": 0.375,
+      "found_b": 1.0,
+      "errors": []
+    }
+  },
+  "queries": [
+    "rust programming language",
+    "large language models",
+    "openstreetmap berlin",
+    "tokio async runtime",
+    "climate change arctic",
+    "nlp transformers",
+    "linux kernel scheduler",
+    "quantum computing"
+  ],
+  "repeats": 2
+}

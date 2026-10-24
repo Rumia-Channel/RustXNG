@@ -60,7 +60,7 @@ python3 tools/coverage.py /path/to/searxng settings.toml
 | プラグイン 12 種 | 11 移植済み（hostnames / tracker_url_remover / time_zone / calculator / hash / oa_doi / self_info / unit_converter / ahmia_filter / tor_check / infinite_scroll） |
 | アンサーラー | statistics / random / weather |
 | favicons | 実装（`/favicon_proxy`、キャッシュ付き） |
-| i18n | 11 ロケール（`tools/import_translations.py` で生成） |
+| i18n | 57 ロケール（`tools/import_translations.py` で生成） |
 | wikidata インフォボックス | `src/wikidata_infobox.rs` |
 | valkey / redis キャッシュ | 未移植（TTL + LRU のメモリ内キャッシュで代替） |
 | botdetection / limiter.toml | 部分（クライアント単位の簡易レート制限のみ） |

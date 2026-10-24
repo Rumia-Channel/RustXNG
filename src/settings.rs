@@ -50,6 +50,9 @@ pub struct Settings {
     pub outgoing: Outgoing,
     pub engines: Vec<EngineConfig>,
     pub plugins: Plugins,
+    /// Response cache backend (upstream `cache` and `valkey`).
+    #[serde(default)]
+    pub cache: CacheSettings,
     /// Categories shown as tabs (upstream `categories_as_tabs`).
     pub categories_as_tabs: Vec<String>,
     /// Accepted for compatibility with SearXNG configs.
@@ -90,11 +93,17 @@ pub struct Server {
     pub port: u16,
     pub base_url: Option<String>,
     pub secret_key: String,
-    pub limiter: bool,
-    /// Length of the limiter window in seconds (our simplification).
+    /// `server.limiter`: the legacy boolean or a `[server.limiter]` table.
+    pub limiter: LimiterSettings,
+    /// Length of the legacy limiter window in seconds.
+    ///
+    /// Only used when `server.limiter = true` (the flat form); the table form
+    /// uses the upstream `ip_limit` windows.
     pub limiter_window: u64,
-    /// Requests allowed per client and window (our simplification).
+    /// Requests allowed per client and window in the legacy flat form.
     pub limiter_max: u32,
+    /// Upstream's `server.public_instance`: enables the stricter limiter.
+    pub public_instance: bool,
     pub image_proxy: bool,
     /// HTTP method of the search form: `GET` or `POST`.
     pub method: String,
@@ -108,12 +117,154 @@ impl Default for Server {
             port: 8888,
             base_url: None,
             secret_key: "ultrasecretkey".into(),
-            limiter: false,
+            limiter: LimiterSettings::default(),
             limiter_window: 60,
             limiter_max: 30,
+            public_instance: false,
             image_proxy: false,
             method: "POST".into(),
             http_protocol_version: None,
+        }
+    }
+}
+
+impl Server {
+    /// Whether the limiter is switched on, in either the flat or table form.
+    pub fn limiter_enabled(&self) -> bool {
+        self.limiter.is_enabled()
+    }
+
+    /// The `[server.limiter]` table, if the table form is used.
+    pub fn limiter_config(&self) -> Option<&LimiterConfig> {
+        self.limiter.config()
+    }
+}
+
+/// `server.limiter`: a boolean (upstream's `server.limiter`) or a table:
+///
+/// ```text
+/// [server.limiter]
+/// enabled = true
+/// trusted_proxies = ["127.0.0.0/8"]
+///
+/// [server.limiter.botdetection]
+/// ipv4_prefix = 32
+/// ipv6_prefix = 48
+///
+/// [server.limiter.botdetection.ip_limit]
+/// filter_link_local = false
+/// link_token = true
+///
+/// [server.limiter.botdetection.ip_lists]
+/// pass_ip = ["192.168.0.0/16"]
+/// block_ip = []
+/// ```
+///
+/// The `[botdetection]` keys mirror `limiter.toml` upstream.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum LimiterSettings {
+    /// `server.limiter = true`: enabled with the legacy flat window/limit.
+    Enabled(bool),
+    /// `[server.limiter]` with the botdetection configuration.
+    Config(Box<LimiterConfig>),
+}
+
+impl Default for LimiterSettings {
+    fn default() -> Self {
+        Self::Enabled(false)
+    }
+}
+
+impl LimiterSettings {
+    pub fn is_enabled(&self) -> bool {
+        match self {
+            Self::Enabled(enabled) => *enabled,
+            Self::Config(config) => config.enabled,
+        }
+    }
+
+    pub fn config(&self) -> Option<&LimiterConfig> {
+        match self {
+            Self::Enabled(_) => None,
+            Self::Config(config) => Some(config),
+        }
+    }
+}
+
+/// The `[server.limiter]` table.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(default)]
+pub struct LimiterConfig {
+    /// Enabling the table form enables the limiter unless set to `false`.
+    pub enabled: bool,
+    /// Trusted proxies; merged with `botdetection.trusted_proxies`.
+    pub trusted_proxies: Vec<String>,
+    pub botdetection: BotDetection,
+}
+
+impl Default for LimiterConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            trusted_proxies: Vec::new(),
+            botdetection: BotDetection::default(),
+        }
+    }
+}
+
+/// `[server.limiter.botdetection]`, mirroring upstream's `limiter.toml`.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(default)]
+pub struct BotDetection {
+    /// Number of leading bits that define an IPv4 client network.
+    pub ipv4_prefix: u8,
+    /// Number of leading bits that define an IPv6 client network.
+    pub ipv6_prefix: u8,
+    /// Addresses of reverse proxies whose forwarding headers are trusted.
+    pub trusted_proxies: Vec<String>,
+    pub ip_limit: IpLimitConfig,
+    pub ip_lists: IpListsConfig,
+}
+
+impl Default for BotDetection {
+    fn default() -> Self {
+        Self {
+            ipv4_prefix: 32,
+            ipv6_prefix: 48,
+            trusted_proxies: vec!["127.0.0.0/8".into(), "::1".into()],
+            ip_limit: IpLimitConfig::default(),
+            ip_lists: IpListsConfig::default(),
+        }
+    }
+}
+
+/// `[server.limiter.botdetection.ip_limit]`.
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct IpLimitConfig {
+    /// Also rate limit link-local client networks.
+    pub filter_link_local: bool,
+    /// Challenge clients without a valid limiter token earlier.
+    pub link_token: bool,
+}
+
+/// `[server.limiter.botdetection.ip_lists]`.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(default)]
+pub struct IpListsConfig {
+    pub block_ip: Vec<String>,
+    pub pass_ip: Vec<String>,
+    /// Pass the hardcoded check.searx.space addresses.
+    pub pass_searxng_org: bool,
+}
+
+impl Default for IpListsConfig {
+    fn default() -> Self {
+        Self {
+            block_ip: Vec::new(),
+            pass_ip: Vec::new(),
+            pass_searxng_org: true,
         }
     }
 }
@@ -225,6 +376,31 @@ impl Default for Outgoing {
             keepalive_expiry: 5.0,
             proxies: BTreeMap::new(),
             using_tor_proxy: false,
+        }
+    }
+}
+
+/// Response cache configuration (upstream `cache` and `valkey` sections).
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(default)]
+pub struct CacheSettings {
+    /// Backend: "memory" (default) or "valkey".
+    pub backend: String,
+    /// Connection URL of the valkey backend, e.g. redis://127.0.0.1:6379/0.
+    pub url: String,
+    /// Entry lifetime in seconds (upstream cache.ttl).
+    pub ttl: u64,
+    /// Upper bound of the in-memory cache in bytes (upstream cache.max_bytes).
+    pub max_bytes: usize,
+}
+
+impl Default for CacheSettings {
+    fn default() -> Self {
+        Self {
+            backend: "memory".to_string(),
+            url: "redis://127.0.0.1:6379/0".to_string(),
+            ttl: 300,
+            max_bytes: 8 * 1024 * 1024,
         }
     }
 }
@@ -398,6 +574,12 @@ impl Settings {
         value.try_into().map_err(SettingsError::Parse)
     }
 
+    /// Upstream's `server.public_instance`, also accepted under `[general]`
+    /// for configurations written for older versions of this port.
+    pub fn is_public_instance(&self) -> bool {
+        self.general.public_instance || self.server.public_instance
+    }
+
     /// The built-in defaults (no user file involved).
     pub fn defaults() -> Settings {
         toml::from_str(DEFAULT_SETTINGS).expect("built-in settings.toml must be valid")
@@ -520,6 +702,20 @@ impl Settings {
                 "server.method must be GET or POST, got {:?}",
                 self.server.method
             )));
+        }
+        if let Some(config) = self.server.limiter_config() {
+            if config.botdetection.ipv4_prefix > 32 {
+                return Err(SettingsError::Validation(format!(
+                    "server.limiter.botdetection.ipv4_prefix must be 0-32, got {}",
+                    config.botdetection.ipv4_prefix
+                )));
+            }
+            if config.botdetection.ipv6_prefix > 128 {
+                return Err(SettingsError::Validation(format!(
+                    "server.limiter.botdetection.ipv6_prefix must be 0-128, got {}",
+                    config.botdetection.ipv6_prefix
+                )));
+            }
         }
         if self.search.safe_search > 2 {
             return Err(SettingsError::Validation(

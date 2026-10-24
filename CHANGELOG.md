@@ -4,6 +4,38 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-24
+
+前回の「未移植」項目をすべて埋め、実測でボトルネックを潰したリリースです（後方互換）。
+
+### Added
+
+- **DB 直結エンジン 8 種を実装**: postgresql, mysql_server, mariadb_server, mongodb, sqlite, valkey_server, recoll, opensemantic
+  - 検索バックエンド 3 種（elasticsearch / solr / meilisearch）と合わせ、上流の DB 系 11 種がすべて動作
+  - `db-engines` Cargo フィーチャー（既定で有効）。`--no-default-features` でバイナリを 27 MB → 17 MB に削減可能
+  - 結果は key/value 形式（`keyvalue` テンプレート）で表示
+- **Valkey / Redis キャッシュ**: `[cache] backend = "valkey"` で複数インスタンスがキャッシュを共有
+- **botdetection 相当のレート制限**: 信頼プロキシの X-Forwarded-For 解決、IPv4/IPv6 CIDR、IP 制限のスライディング窓、リンクトークン、429 応答
+- **i18n を 57 ロケールに拡張**（11 → 57。上流は 60）
+
+### Changed
+
+- エンジン名が大文字小文字を区別せずに一致するように
+- 未知のエンジン名を指定した場合は SearXNG と同じく既定のエンジン群で検索（従来は 400 エラー）
+- ベンチマーク example がエンジン別の応答時間を表示
+
+### Performance
+
+- タイムアウトした要求を再試行しない（上流も接続エラーのみ再試行）: 全エンジン検索の中央値 6.26 秒 → 3.00 秒
+- 再試行を含めた全体デッドラインを厳守
+- ウォーム時（キャッシュ + エンジンサスペンド）: 中央値 276 ms、単一サイト検索は 1〜50 ms
+
+### Tests
+
+- ユニット 750 + 統合 14
+
+
+
 ## [0.3.0] - 2026-10-24
 
 全エンジンの移植を完了したリリースです（後方互換）。
