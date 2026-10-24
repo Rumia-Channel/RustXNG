@@ -1060,3 +1060,156 @@ engine = "imgur"
 shortcut = "img"
 categories = ["images"]
 disabled = true
+
+[[engines]]
+name = "alpinelinux"
+engine = "alpinelinux"
+categories = ["packages", "it"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "annas_archive"
+engine = "annas_archive"
+shortcut = "aab"
+categories = ["files", "books"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "discourse"
+engine = "discourse"
+categories = ["general", "social media"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "duckduckgo_extra"
+engine = "duckduckgo_extra"
+categories = ["images", "videos", "news"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "duckduckgo_web"
+engine = "duckduckgo_web"
+shortcut = "ddgb"
+categories = ["general", "web"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "r1337x"
+engine = "1337x"
+categories = ["files"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "r360search"
+engine = "360search"
+shortcut = "360"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "artic"
+engine = "artic"
+shortcut = "arc"
+categories = ["images"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "bing_images"
+engine = "bing_images"
+shortcut = "bii"
+categories = ["images", "web"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "bing_videos"
+engine = "bing_videos"
+shortcut = "biv"
+categories = ["videos", "web"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "bitchute"
+engine = "bitchute"
+shortcut = "bit"
+categories = ["videos"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "bpb"
+engine = "bpb"
+shortcut = "bpb"
+categories = ["general"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "braveapi"
+engine = "braveapi"
+shortcut = "braveapi"
+categories = ["general", "web"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "cachy_os"
+engine = "cachy_os"
+shortcut = "cachy_os"
+categories = ["packages", "it"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "ccc_media"
+engine = "ccc_media"
+shortcut = "ccc_media"
+categories = ["videos"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "chinaso"
+engine = "chinaso"
+shortcut = "chinaso"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "cloudflareai"
+engine = "cloudflareai"
+shortcut = "cfai"
+categories = ["general"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "core"
+engine = "core"
+shortcut = "core"
+categories = ["science", "scientific publications"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "r360search_videos"
+engine = "360search_videos"
+shortcut = "360search_videos"
+categories = ["videos"]
+paging = true
+disabled = true  # unverified; remove when confirmed working

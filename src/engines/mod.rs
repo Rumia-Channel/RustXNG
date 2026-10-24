@@ -97,6 +97,25 @@ pub mod wikidata;
 pub mod wikipedia;
 pub mod xpath;
 pub mod youtube_noapi;
+pub mod alpinelinux;
+pub mod annas_archive;
+pub mod discourse;
+pub mod duckduckgo_extra;
+pub mod duckduckgo_web;
+pub mod r1337x;
+pub mod r360search;
+pub mod artic;
+pub mod bing_images;
+pub mod bing_videos;
+pub mod bitchute;
+pub mod bpb;
+pub mod braveapi;
+pub mod cachy_os;
+pub mod ccc_media;
+pub mod chinaso;
+pub mod cloudflareai;
+pub mod core;
+pub mod r360search_videos;
 
 use crate::engine::EngineHandle;
 use crate::settings::EngineConfig;
@@ -176,6 +195,25 @@ pub fn build(config: &EngineConfig) -> Result<EngineHandle, String> {
         "flickr_noapi" => flickr_noapi::FlickrNoapi::from_config(config)?,
         "giphy" => giphy::Giphy::from_config(config)?,
         "imgur" => imgur::Imgur::from_config(config)?,
+        "alpinelinux" => alpinelinux::AlpineLinux::from_config(config)?,
+        "annas_archive" => annas_archive::AnnasArchive::from_config(config)?,
+        "discourse" => discourse::Discourse::from_config(config)?,
+        "duckduckgo_extra" => duckduckgo_extra::DuckDuckGoExtra::from_config(config)?,
+        "duckduckgo_web" => duckduckgo_web::DuckDuckGoWeb::from_config(config)?,
+        "1337x" => r1337x::_1337x::from_config(config)?,
+        "360search" => r360search::Search360::from_config(config)?,
+        "artic" => artic::Artic::from_config(config)?,
+        "bing_images" => bing_images::BingImages::from_config(config)?,
+        "bing_videos" => bing_videos::BingVideos::from_config(config)?,
+        "bitchute" => bitchute::Bitchute::from_config(config)?,
+        "bpb" => bpb::Bpb::from_config(config)?,
+        "braveapi" => braveapi::BraveApi::from_config(config)?,
+        "cachy_os" => cachy_os::CachyOs::from_config(config)?,
+        "ccc_media" => ccc_media::CccMedia::from_config(config)?,
+        "chinaso" => chinaso::ChinaSo::from_config(config)?,
+        "cloudflareai" => cloudflareai::CloudflareAi::from_config(config)?,
+        "core" => core::Core::from_config(config)?,
+        "360search_videos" => r360search_videos::Videoscarch360::from_config(config)?,
         other => {
             return Err(format!(
                 "engine {:?} uses the unknown engine type {other:?}",
