@@ -75,10 +75,8 @@ impl Engine for CccMedia {
             if let Some(recordings) = json_path(item, "recordings").and_then(|v| v.as_array()) {
                 for rec in recordings {
                     let mime = json_str(rec, "mime_type");
-                    if mime.starts_with("video") {
-                        if iframe_src.is_empty() || mime == "video/mp4" {
-                            iframe_src = json_str(rec, "recording_url");
-                        }
+                    if mime.starts_with("video") && (iframe_src.is_empty() || mime == "video/mp4") {
+                        iframe_src = json_str(rec, "recording_url");
                     }
                 }
             }

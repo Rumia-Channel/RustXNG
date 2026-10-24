@@ -183,7 +183,7 @@ fn parse_general(body: &str) -> Result<Vec<EngineItem>, EngineError> {
             _ => "",
         };
         match json_path(initial, key).and_then(|value| value.as_array()) {
-            Some(items) => results.extend(items.iter().filter_map(|item| build_item(item))),
+            Some(items) => results.extend(items.iter().filter_map(build_item)),
             None => results.extend(build_item(initial)),
         }
     }
