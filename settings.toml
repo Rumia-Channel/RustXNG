@@ -1213,3 +1213,244 @@ shortcut = "360search_videos"
 categories = ["videos"]
 paging = true
 disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "iqiyi"
+engine = "iqiyi"
+shortcut = "iq"
+categories = ["videos"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "niconico"
+engine = "niconico"
+shortcut = "nico"
+categories = ["videos"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "odysee"
+engine = "odysee"
+shortcut = "od"
+categories = ["videos"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "rumble"
+engine = "rumble"
+shortcut = "ru"
+categories = ["videos"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "vimeo"
+engine = "vimeo"
+shortcut = "vm"
+categories = ["videos"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "youtube_api"
+engine = "youtube_api"
+shortcut = "yta"
+categories = ["videos", "music"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "github_code"
+engine = "github_code"
+shortcut = "ghc"
+categories = ["code"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "gitlab"
+engine = "gitlab"
+shortcut = "gl"
+categories = ["it", "repos"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "marginalia"
+engine = "marginalia"
+shortcut = "mar"
+categories = ["general", "blogs"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "seznam"
+engine = "seznam"
+shortcut = "szn"
+categories = ["general", "web"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "yahoo"
+engine = "yahoo"
+shortcut = "yh"
+categories = ["general", "web"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "yandex"
+engine = "yandex"
+shortcut = "yd"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "ebay"
+engine = "ebay"
+shortcut = "eb"
+categories = ["shopping"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "europepmc"
+engine = "europepmc"
+shortcut = "epmc"
+categories = ["science", "scientific publications"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "geizhals"
+engine = "geizhals"
+shortcut = "geiz"
+categories = ["shopping"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "gitea"
+engine = "gitea"
+shortcut = "gitea"
+categories = ["it", "repos"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "google_images"
+engine = "google_images"
+shortcut = "goi"
+categories = ["images", "web"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "hex"
+engine = "hex"
+shortcut = "hex"
+categories = ["it", "packages"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "neosearch"
+engine = "neosearch"
+shortcut = "neo"
+categories = ["general"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "openalex"
+engine = "openalex"
+shortcut = "oa"
+categories = ["science", "scientific publications"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "pkg_go_dev"
+engine = "pkg_go_dev"
+shortcut = "pgo"
+categories = ["packages", "it"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "sogou"
+engine = "sogou"
+shortcut = "sogou"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "sogou_images"
+engine = "sogou_images"
+shortcut = "sogoui"
+categories = ["images"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "sogou_videos"
+engine = "sogou_videos"
+shortcut = "sogouv"
+categories = ["videos"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "sourcehut"
+engine = "sourcehut"
+shortcut = "srht"
+categories = ["it", "repos"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "springer"
+engine = "springer"
+shortcut = "springer"
+categories = ["science", "scientific publications"]
+paging = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "steam"
+engine = "steam"
+shortcut = "stm"
+categories = ["general"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "swisscows"
+engine = "swisscows"
+shortcut = "sw"
+categories = ["general"]
+paging = true
+time_range_support = true
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "www1x"
+engine = "www1x"
+shortcut = "1x"
+categories = ["stock images"]
+disabled = true  # unverified; remove when confirmed working
+
+[[engines]]
+name = "yep"
+engine = "yep"
+shortcut = "yep"
+categories = ["general"]
+disabled = true  # unverified; remove when confirmed working

@@ -116,6 +116,36 @@ pub mod chinaso;
 pub mod cloudflareai;
 pub mod core;
 pub mod r360search_videos;
+pub mod iqiyi;
+pub mod niconico;
+pub mod odysee;
+pub mod rumble;
+pub mod vimeo;
+pub mod youtube_api;
+pub mod github_code;
+pub mod gitlab;
+pub mod marginalia;
+pub mod seznam;
+pub mod yahoo;
+pub mod yandex;
+pub mod ebay;
+pub mod europepmc;
+pub mod geizhals;
+pub mod gitea;
+pub mod google_images;
+pub mod hex;
+pub mod neosearch;
+pub mod openalex;
+pub mod pkg_go_dev;
+pub mod sogou;
+pub mod sogou_images;
+pub mod sogou_videos;
+pub mod sourcehut;
+pub mod springer;
+pub mod steam;
+pub mod swisscows;
+pub mod www1x;
+pub mod yep;
 
 use crate::engine::EngineHandle;
 use crate::settings::EngineConfig;
@@ -214,6 +244,36 @@ pub fn build(config: &EngineConfig) -> Result<EngineHandle, String> {
         "cloudflareai" => cloudflareai::CloudflareAi::from_config(config)?,
         "core" => core::Core::from_config(config)?,
         "360search_videos" => r360search_videos::Videoscarch360::from_config(config)?,
+        "iqiyi" => iqiyi::Iqiyi::from_config(config)?,
+        "niconico" => niconico::Niconico::from_config(config)?,
+        "odysee" => odysee::Odysee::from_config(config)?,
+        "rumble" => rumble::Rumble::from_config(config)?,
+        "vimeo" => vimeo::Vimeo::from_config(config)?,
+        "youtube_api" => youtube_api::YouTubeApi::from_config(config)?,
+        "github_code" => github_code::GitHubCode::from_config(config)?,
+        "gitlab" => gitlab::GitLab::from_config(config)?,
+        "marginalia" => marginalia::Marginalia::from_config(config)?,
+        "seznam" => seznam::Seznam::from_config(config)?,
+        "yahoo" => yahoo::Yahoo::from_config(config)?,
+        "yandex" => yandex::Yandex::from_config(config)?,
+        "ebay" => ebay::Ebay::from_config(config)?,
+        "europepmc" => europepmc::EuropePmc::from_config(config)?,
+        "geizhals" => geizhals::Geizhals::from_config(config)?,
+        "gitea" => gitea::Gitea::from_config(config)?,
+        "google_images" => google_images::GoogleImages::from_config(config)?,
+        "hex" => hex::Hex::from_config(config)?,
+        "neosearch" => neosearch::Neosearch::from_config(config)?,
+        "openalex" => openalex::OpenAlex::from_config(config)?,
+        "pkg_go_dev" => pkg_go_dev::PkgGoDev::from_config(config)?,
+        "sogou" => sogou::Sogou::from_config(config)?,
+        "sogou_images" => sogou_images::SogouImages::from_config(config)?,
+        "sogou_videos" => sogou_videos::SogouVideos::from_config(config)?,
+        "sourcehut" => sourcehut::SourceHut::from_config(config)?,
+        "springer" => springer::Springer::from_config(config)?,
+        "steam" => steam::Steam::from_config(config)?,
+        "swisscows" => swisscows::Swisscows::from_config(config)?,
+        "www1x" => www1x::Www1x::from_config(config)?,
+        "yep" => yep::Yep::from_config(config)?,
         other => {
             return Err(format!(
                 "engine {:?} uses the unknown engine type {other:?}",
