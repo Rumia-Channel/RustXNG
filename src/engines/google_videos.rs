@@ -86,10 +86,10 @@ impl Engine for GoogleVideos {
         if response.status == 302 || (body.len() < 2000 && body.contains("/sorry/")) {
             return Err(EngineError::Captcha);
         }
-        if let Ok(url) = url::Url::parse(&response.final_url) {
-            if url.host_str() == Some("sorry.google.com") || url.path().starts_with("/sorry") {
-                return Err(EngineError::Captcha);
-            }
+        if url::Url::parse(&response.final_url).is_ok_and(|url| {
+            url.host_str() == Some("sorry.google.com") || url.path().starts_with("/sorry")
+        }) {
+            return Err(EngineError::Captcha);
         }
         let body = body.trim_start();
         let body = match body.strip_prefix("<?xml") {
@@ -109,11 +109,10 @@ impl Engine for GoogleVideos {
             let Some(url) = absolute_url(&target, "https://www.google.com/") else {
                 continue;
             };
-            if !is_http_url(&url) {
+            if !url.starts_with("http") {
                 continue;
             }
-            let mut thumbnail =
-                attr_of(element, "img[class*='SygO9d']", "src").unwrap_or_default();
+            let mut thumbnail = attr_of(element, "img[class*='SygO9d']", "src").unwrap_or_default();
             if thumbnail.contains("/default.jpg") {
                 thumbnail = thumbnail
                     .split('?')
@@ -125,7 +124,8 @@ impl Engine for GoogleVideos {
             if !thumbnail.is_empty() {
                 builder = builder.thumbnail(thumbnail);
             }
-            if let Some(length) = length(element) {
+            let spans = children(element, "span[class*='YVIcad']");
+            if let Some(length) = spans.into_iter().find_map(|span| duration(&text(span))) {
                 builder = builder.metadata("length", length);
             }
             results.push(builder.build());
@@ -147,40 +147,20 @@ fn unwrap_google_url(raw: &str) -> String {
     }
 }
 
-/// The first span that parses as a duration, formatted like a timedelta.
-fn length(element: scraper::ElementRef<'_>) -> Option<String> {
-    for span in children(element, "span[class*='YVIcad']") {
-        if let Some(seconds) = duration_seconds(&text(span)) {
-            return Some(format_duration(seconds));
-        }
-    }
-    None
-}
-
-/// Upstream's parse_duration_string: the last three colon separated parts.
-fn duration_seconds(value: &str) -> Option<i64> {
+/// Upstream's parse_duration_string, rendered the way a timedelta is.
+fn duration(value: &str) -> Option<String> {
     let parts: Vec<&str> = value.trim().split(':').collect();
-    let mut total = 0i64;
+    let mut seconds = 0i64;
     for part in &parts[parts.len().saturating_sub(3)..] {
-        total = total * 60 + part.trim().parse::<i64>().ok()?;
+        seconds = seconds * 60 + part.trim().parse::<i64>().ok()?;
     }
-    Some(total)
-}
-
-fn format_duration(seconds: i64) -> String {
     let seconds = seconds.max(0);
-    let hours = seconds / 3600;
-    let minutes = (seconds % 3600) / 60;
-    let seconds = seconds % 60;
-    if hours > 0 {
+    let (hours, minutes, seconds) = (seconds / 3600, seconds % 3600 / 60, seconds % 60);
+    Some(if hours > 0 {
         format!("{hours:02}:{minutes:02}:{seconds:02}")
     } else {
         format!("{minutes:02}:{seconds:02}")
-    }
-}
-
-fn is_http_url(url: &str) -> bool {
-    url.starts_with("http://") || url.starts_with("https://")
+    })
 }
 
 #[cfg(test)]
@@ -188,19 +168,13 @@ mod tests {
     use super::*;
 
     fn engine() -> Arc<GoogleVideos> {
-        GoogleVideos::from_config(&EngineConfig::new(
-            "google videos",
-            "google_videos",
-            "gov",
-            &["videos"],
-        ))
-        .unwrap()
+        let config = EngineConfig::new("google videos", "google_videos", "gov", &["videos"]);
+        GoogleVideos::from_config(&config).unwrap()
     }
 
     const FIXTURE: &str = r##"<?xml version="1.0"?>
     <div class="zMzFAb"><a class="fuLhoc" href="/url?q=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Dabc&amp;sa=U">w</a><span class="CVA68e">A video title</span><img class="SygO9d" src="https://i.ytimg.com/vi/abc/default.jpg?sqp=x"><span class="YVIcad">3:12</span></div>
-    <div class="zMzFAb"><a class="fuLhoc" href="https://example.com/b">b</a><span class="CVA68e">Second video</span><span class="YVIcad">no duration</span><span class="YVIcad">1:02:03</span></div>
-    <div class="zMzFAb"><span class="CVA68e">No link</span></div>"##;
+    <div class="zMzFAb"><a class="fuLhoc" href="https://example.com/b">b</a><span class="CVA68e">Second video</span><span class="YVIcad">no duration</span><span class="YVIcad">1:02:03</span></div><div class="zMzFAb"><span class="CVA68e">No link</span></div>"##;
 
     #[test]
     fn parses_the_video_blocks() {

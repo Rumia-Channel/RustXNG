@@ -7,7 +7,7 @@ use crate::engine::util::*;
 use crate::engine::{
     Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse,
 };
-use crate::query::{Query, TimeRange};
+use crate::query::Query;
 use crate::settings::EngineConfig;
 use quick_xml::events::Event;
 const DEFAULTS: EngineDefaults = EngineDefaults {
