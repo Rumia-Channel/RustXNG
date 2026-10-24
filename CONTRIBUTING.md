@@ -24,7 +24,7 @@ cargo test
 | 変更 | 必須の確認 |
 | :--- | :--- |
 | すべての変更 | `cargo fmt --all --check`、`cargo test` |
-| ロジック変更 | 上記 + `cargo clippy --all-targets` |
+| ロジック変更 | 上記 + `cargo clippy --all-targets -- -D warnings` |
 | エンジン追加・修正 | 上記 + フィクスチャテストの追加（下記） |
 | 性能に関わる変更 | 上記 + `cargo run --release --example benchmark` |
 
@@ -46,6 +46,22 @@ cargo test
 - 1 つの PR は 1 つの目的に絞ってください
 - PR の説明には「概要 / 変更 / 検証 / 注意点」を書いてください
 - テストが通らない PR はレビューしません（CI で同じ確認が走ります）
+
+## リリース
+
+`main` の CI が緑になってから、annotated タグを打つと `.github/workflows/release.yml` が走ります。
+
+1. `Cargo.toml` の `version` と `CHANGELOG.md` に同じ版の項を用意します
+2. `git tag -a vX.Y.Z -m 'vX.Y.Z'` して push します
+3. CI が 5 ターゲットをビルドし、`rustxng-vX.Y.Z-<target>`（Windows は `.exe`）と `.sha256` を Release に添付します
+
+リリース本文は `CHANGELOG.md` の該当版セクションから自動で作られます。手順そのものを直したあとに同じタグを出し直したい場合は、タグを動かさずに再実行できます（ワークフロー定義はディスパッチした ref から読まれます）。
+
+```sh
+gh workflow run release.yml --ref main -f tag=vX.Y.Z --dry-run=false
+```
+
+`--dry-run=true` にすると、ビルドと検証だけして何もアップロードしません。公開済みのアセットは上書きしません（未添付のものだけ追加します）。
 
 ## ライセンスと帰属
 

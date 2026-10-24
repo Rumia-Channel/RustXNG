@@ -5,18 +5,71 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - name: Format
         run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
       - name: Build and test
         run: cargo test --all-targets
       - name: Build the example
         run: cargo build --release --example benchmark
+      - name: Lint the Japanese docs
+        if: runner.os == 'Linux'
+        run: npx --yes markdownlint-cli2 "*.md" "docs/*.md" 
+
+  no-default-features:
+    # The documented slim build (no database engines) must keep compiling.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: no-default-features
+      - run: cargo build --release --locked --no-default-features
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build --tag rustxng:ci .
+      - name: The image serves /healthz
+        run: |
+          set -euo pipefail
+          docker run --detach --name rustxng-ci --publish 8888:8888 rustxng:ci
+          for _ in $(seq 1 30); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:8888/healthz; then
+              echo "healthz ok"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs rustxng-ci
+          exit 1
+      - name: Stop the container
+        if: always()
+        run: docker rm --force rustxng-ci || true

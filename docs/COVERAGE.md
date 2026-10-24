@@ -9,7 +9,7 @@ python3 tools/coverage.py /path/to/searxng settings.toml
 ## 現在の数値
 
 | 指標 | 値 |
-|---|---:|
+| --- | ---: |
 | 上流のエンジン型 | 226 |
 | 本移植のエンジン型 | **226 / 226（100%）** |
 | 上流エントリのうち型を実装済み | **352 / 352（100%）** |
@@ -28,7 +28,7 @@ python3 tools/coverage.py /path/to/searxng settings.toml
 ## エンジン型の内訳
 
 | 分類 | 数 | 状態 |
-|---|---:|---|
+| --- | ---: | --- |
 | スクレイパー / HTTP API | 約 200 | 既定で有効、または認証情報を設定すれば有効 |
 | 検索バックエンド（HTTP） | 3 | `elasticsearch` / `sorl` / `meilisearch`（`base_url` + index / collection を設定） |
 | DB ドライバ直結 | 8 | `postgresql` / `mysql_server` / `mariadb_server` / `mongodb` / `sqlite` / `valkey_server` / `recoll` / `opensemantic` — 設定を読んで説明用のエラーを返すスタブ |
@@ -56,7 +56,7 @@ python3 tools/coverage.py /path/to/searxng settings.toml
 ## サブシステム（エンジン以外）
 
 | 上流 | 状態 |
-|---|---|
+| --- | --- |
 | プラグイン 12 種 | 11 移植済み（hostnames / tracker_url_remover / time_zone / calculator / hash / oa_doi / self_info / unit_converter / ahmia_filter / tor_check / infinite_scroll） |
 | アンサーラー | statistics / random / weather |
 | favicons | 実装（`/favicon_proxy`、キャッシュ付き） |

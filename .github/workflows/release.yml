@@ -1,0 +1,214 @@
+name: release
+
+# Publish the platform binaries on an annotated version tag.
+#
+# rustdsh installs this sidecar with `rdsh rustxng install`, which reads
+# /releases/latest and picks the asset whose name is
+# `rustxng-<tag>-<rustc triple>` (plus `.exe` on Windows). Keep that shape:
+# the tag is part of the file name, so one rule matches every platform.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    # Re-run the release for an existing tag. The workflow file is taken from
+    # the dispatched ref, so a broken step can be fixed without moving the tag.
+    inputs:
+      tag:
+        description: 'Existing tag to publish, e.g. v0.4.0'
+        required: true
+        type: string
+      dry_run:
+        description: 'Build and verify everything, upload nothing'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # glibc 2.35 floor: build on 22.04 so 24.04 and 25.x still run it.
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            artifact: rustxng
+          # Static: runs on any Linux, including Alpine.
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-musl
+            artifact: rustxng
+            musl: true
+          - os: macos-14
+            target: aarch64-apple-darwin
+            artifact: rustxng
+          - os: macos-13
+            target: x86_64-apple-darwin
+            artifact: rustxng
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: rustxng.exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Install the musl toolchain
+        if: matrix.musl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+      - name: Build
+        shell: bash
+        run: cargo build --release --locked --target "${{ matrix.target }}"
+      - name: Check the binary answers
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="target/${{ matrix.target }}/release/${{ matrix.artifact }}"
+          test -f "$binary"
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            "$binary" --version
+          fi
+      - name: Name the asset after the tag and the target
+        shell: bash
+        run: |
+          set -euo pipefail
+          source="target/${{ matrix.target }}/release/${{ matrix.artifact }}"
+          name="rustxng-${RELEASE_TAG}-${{ matrix.target }}"
+          case "${{ matrix.artifact }}" in
+            *.exe) name="$name.exe" ;;
+          esac
+          mkdir -p dist
+          cp "$source" "dist/$name"
+          sha256sum "dist/$name" > "dist/$name.sha256"
+          ls -l dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rustxng-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rustxng-*
+          merge-multiple: true
+          path: dist
+      - name: Require the complete, expected asset set
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="x86_64-unknown-linux-gnu x86_64-unknown-linux-musl aarch64-apple-darwin x86_64-apple-darwin x86_64-pc-windows-msvc"
+          for target in $expected; do
+            case "$target" in
+              *windows*) name="rustxng-${RELEASE_TAG}-$target.exe" ;;
+              *) name="rustxng-${RELEASE_TAG}-$target" ;;
+            esac
+            test -s "dist/$name" || { echo "missing asset: $name" >&2; exit 1; }
+            test -s "dist/$name.sha256" || { echo "missing sidecar: $name.sha256" >&2; exit 1; }
+          done
+          ls -l dist
+      - name: Compose the release notes from the changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          # Keep the section for this version; fall back to the tag when the
+          # changelog has no entry yet.
+          awk -v want="## [$version]" '
+            $0 ~ "^" want { inside = 1; next }
+            inside && /^## / { exit }
+            inside { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/section.md"
+          if [ -s "$RUNNER_TEMP/section.md" ]; then
+            { echo "# RustXNG $RELEASE_TAG"; echo; cat "$RUNNER_TEMP/section.md"; } > "$RUNNER_TEMP/notes.md"
+          else
+            { echo "# RustXNG $RELEASE_TAG"; echo; echo "チェックサムは各アセットの .sha256 を参照してください。"; } > "$RUNNER_TEMP/notes.md"
+          fi
+          echo "--- notes ---"
+          head -20 "$RUNNER_TEMP/notes.md"
+      - name: Create the release when it does not exist
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "release $RELEASE_TAG already exists; adding missing assets"
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" --verify-tag --title "RustXNG $RELEASE_TAG" \
+            --notes-file "$RUNNER_TEMP/notes.md"
+      - name: Upload only the assets the release does not have
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Never overwrite a published asset: a rebuild can differ byte for
+          # byte, and replacing it would invalidate downloaded checksums.
+          existing="$RUNNER_TEMP/existing"
+          mkdir -p "$existing"
+          if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/have.txt" 2>/dev/null; then :; else : > "$RUNNER_TEMP/have.txt"; fi
+          pending=()
+          for file in dist/*; do
+            name="$(basename "$file")"
+            if grep -qxF "$name" "$RUNNER_TEMP/have.txt"; then
+              echo "keep: $name"
+            else
+              pending+=("$file")
+            fi
+          done
+          if [ ${#pending[@]} -eq 0 ]; then
+            echo "nothing to upload"
+          else
+            gh release upload "$RELEASE_TAG" "${pending[@]}"
+          fi
+      - name: Verify the published asset set
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | sort > "$RUNNER_TEMP/published.txt"
+          missing=0
+          for file in dist/*; do
+            name="$(basename "$file")"
+            if ! grep -qxF "$name" "$RUNNER_TEMP/published.txt"; then
+              echo "not published: $name" >&2
+              missing=1
+            fi
+          done
+          cat "$RUNNER_TEMP/published.txt"
+          exit "$missing"

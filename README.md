@@ -3,6 +3,7 @@
 [![CI](https://github.com/sahenjp/RustXNG/actions/workflows/ci.yml/badge.svg)](https://github.com/sahenjp/RustXNG/actions/workflows/ci.yml)
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](Cargo.toml)
+[![Release](https://img.shields.io/github/v/release/sahenjp/RustXNG?sort=semver)](https://github.com/sahenjp/RustXNG/releases/latest)
 
 Google・Bing・Wikipedia・GitHub など **200 以上の検索サイトをまとめて検索できる、自分でホストする検索エンジン**です。検索語は各サイトへ直接送られ、広告や追跡のない結果だけが表示されます。Python 製の [SearXNG](https://github.com/searxng/searxng) を Rust で書き直したもので、同じ使い勝手のまま起動が速く、メモリ消費が小さいのが特徴です。
 
@@ -18,6 +19,28 @@ Google・Bing・Wikipedia・GitHub など **200 以上の検索サイトをま�
 - **自分のデータも検索** — PostgreSQL / MySQL / MariaDB / MongoDB / SQLite / Valkey / Elasticsearch / Solr / Meilisearch を検索対象にできる
 
 ## 使い方
+
+### バイナリを入手する
+
+リリースページに、タグとターゲット名を含む名前でビルド済みバイナリを置いています。
+
+| プラットフォーム | 資産名の例 | 備考 |
+| :--- | :--- | :--- |
+| Linux x86_64（glibc） | `rustxng-v0.4.0-x86_64-unknown-linux-gnu` | glibc 2.35 以上 |
+| Linux x86_64（静的） | `rustxng-v0.4.0-x86_64-unknown-linux-musl` | Alpine などでも動作 |
+| macOS arm64 | `rustxng-v0.4.0-aarch64-apple-darwin` | Apple Silicon |
+| macOS x86_64 | `rustxng-v0.4.0-x86_64-apple-darwin` | Intel Mac |
+| Windows x86_64 | `rustxng-v0.4.0-x86_64-pc-windows-msvc.exe` | `rustxng.exe` として保存 |
+
+各資産には `.sha256` を併置しています。取得後は次のように確認してから配置してください。
+
+```bash
+gh release download --repo sahenjp/RustXNG --pattern 'rustxng-*-x86_64-unknown-linux-gnu*'
+sha256sum -c rustxng-v0.4.0-x86_64-unknown-linux-gnu.sha256
+install -m755 rustxng-v0.4.0-x86_64-unknown-linux-gnu ~/.local/bin/rustxng
+```
+
+`rdsh rustxng install`（rustdsh 同梱のコマンド）は、この命名規則で最新リリースの資産を選んで自動で導入します。
 
 ### 起動する
 
@@ -117,7 +140,7 @@ cargo clippy --all-targets
 cargo test          # 735 件、外部ネットワーク不要
 ```
 
-エンジンの追加方法は [CONTRIBUTING.md](CONTRIBUTING.md)、脆弱性の報告は [SECURITY.md](SECURITY.md) を参照してください。CI はフォーマット・テスト・ベンチマークのビルドを検証します。
+エンジンの追加方法は [CONTRIBUTING.md](CONTRIBUTING.md)、脆弱性の報告は [SECURITY.md](SECURITY.md) を参照してください。CI は Linux・macOS・Windows でフォーマット・clippy・テストを回し、`--no-default-features` の軽量ビルドと Docker イメージの起動まで検証します。
 
 ## ドキュメント
 

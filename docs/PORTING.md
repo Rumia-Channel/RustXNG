@@ -12,7 +12,7 @@
 ## モジュール対応
 
 | このリポジトリ | 上流 |
-|---|---|
+| --- | --- |
 | `src/settings.rs`, `settings.toml` | `searx/settings_defaults.py`, `searx/settings_loader.py`, `searx/settings.yml` |
 | `src/query.rs` | `searx/query.py` |
 | `src/results.rs` | `searx/results.py`, `searx/result_types/` |
@@ -36,7 +36,7 @@
 凡例: **移植済み** = 上流と同じ目的で動作 / **部分** = 動くが範囲や精度が狭い / **未移植** = 今回の対象外。
 
 | 機能 | 状態 | 補足 |
-|---|---|---|
+| --- | --- | --- |
 | クエリ構文（bang / category / language / timeout / feeling lucky） | 移植済み | `src/query.rs`。`!engine`、`!category`、`:lang`、`<3`、`!!`、`!!bang` |
 | 外部 bang | 部分 | 上流は圧縮トライ（約 13,000 件）。本実装は主要 40 件の表 |
 | 言語・ロケール | 移植済み | `searx/sxng_locales.py` を等価な表として移植（110 ロケール） |
@@ -64,7 +64,7 @@
 ### プラグイン対応
 
 | 上流 | 状態 |
-|---|---|
+| --- | --- |
 | `hostnames` | 移植済み（ホスト名の metadata 付与） |
 | `tracker_url_remover` | 移植済み（内蔵のトラッキングパラメータ表。上流は ClearURLs ルールを取得） |
 | `calculator` | 移植済み（四則演算・べき乗・sqrt などの簡易評価器） |
@@ -79,7 +79,7 @@
 ## エンジン対応
 
 | エンジン | 上流 | 逸脱・補足 |
-|---|---|---|
+| --- | --- | --- |
 | duckduckgo | `duckduckgo.py` | HTML エンドポイント。上流の vqd 取得を伴う 2 ページ目以降の処理は未移植（`s@ オフセットで代替） |
 | google | `google.py` | HTML。JS 必須のインタースティシャルを検出したら `access denied` として報告 |
 | bing | `bing.py` | HTML。`/ck/a` の base64 リダイレクトを展開 |
