@@ -26,7 +26,7 @@ Google・Bing・Wikipedia・GitHub など **200 以上の検索サイトをま�
 
 | プラットフォーム | 資産名の例 | 備考 |
 | :--- | :--- | :--- |
-| Linux x86_64（glibc） | `rustxng-v0.4.0-x86_64-unknown-linux-gnu` | glibc 2.35 以上 |
+| Linux x86_64（glibc） | `rustxng-v0.4.0-x86_64-unknown-linux-gnu` | glibc 2.34 以上 |
 | Linux x86_64（静的） | `rustxng-v0.4.0-x86_64-unknown-linux-musl` | Alpine などでも動作 |
 | macOS arm64 | `rustxng-v0.4.0-aarch64-apple-darwin` | Apple Silicon |
 | macOS x86_64 | `rustxng-v0.4.0-x86_64-apple-darwin` | Intel Mac |

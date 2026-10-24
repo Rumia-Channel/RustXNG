@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- ビルド済みバイナリの配布: Linux（glibc / 静的 musl）、macOS（arm64 / x86_64）、
+  Windows（x86_64）をタグ push で自動ビルドし、`.sha256` とともに Release に添付
+  （`.github/workflows/release.yml`）。資産名は `rustxng-<tag>-<target>` で、
+  rustdsh の `rdsh rustxng install` がこの名前で選ぶ
+- CI を Linux・macOS・Windows の matrix に拡張し、clippy `-D warnings`、
+  `--no-default-features` ビルド、Docker イメージの `/healthz` 起動確認を追加
+
 ## [0.4.0] - 2026-10-24
 
 前回の「未移植」項目をすべて埋め、実測でボトルネックを潰したリリースです（後方互換）。
