@@ -186,7 +186,13 @@ mod tests {
                 assert_eq!(result.metadata["leech"], "4");
                 assert_eq!(result.metadata["filesize"], "1.50 MB");
                 assert!(result.metadata["magnetlink"].starts_with("magnet:?xt=urn:btih:DEF456"));
-                assert!(result.published_date.as_deref().unwrap().starts_with("2023-11-14"));
+                assert!(
+                    result
+                        .published_date
+                        .as_deref()
+                        .unwrap()
+                        .starts_with("2023-11-14")
+                );
             }
             _ => panic!("expected a result"),
         }

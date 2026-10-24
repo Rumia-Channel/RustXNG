@@ -69,17 +69,27 @@ impl Engine for Seznam {
         let html = parse_html(&response.text());
         let mut results = Vec::new();
         for element in select_elements(&html, "#searchpage-root .Layout--left .f2c528")? {
-            let Some(title_element) = child(element, "h3 a") else { continue };
+            let Some(title_element) = child(element, "h3 a") else {
+                continue;
+            };
             let Some(data_element) = child(element, "div.c8774a, div.e69e8d.a11657") else {
                 continue;
             };
-            let Some(href) = attr(title_element, "href") else { continue };
-            let Some(url) = absolute_url(&href, BASE_URL) else { continue };
+            let Some(href) = attr(title_element, "href") else {
+                continue;
+            };
+            let Some(url) = absolute_url(&href, BASE_URL) else {
+                continue;
+            };
             let title = text(title_element);
             if title.is_empty() || !url.starts_with("http") {
                 continue;
             }
-            results.push(ResultBuilder::new(url, title).content(text(data_element)).build());
+            results.push(
+                ResultBuilder::new(url, title)
+                    .content(text(data_element))
+                    .build(),
+            );
         }
         Ok(results)
     }

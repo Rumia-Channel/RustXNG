@@ -67,15 +67,17 @@ impl Engine for SourceHut {
             ("page", pageno.to_string()),
             ("sort", self.sort_order()),
         ];
-        Ok(EngineRequest::get(format!(
-            "{}?{}",
-            self.base_url(),
-            query_string(&pairs)
-        ))
-        .header("User-Agent", USER_AGENT))
+        Ok(
+            EngineRequest::get(format!("{}?{}", self.base_url(), query_string(&pairs)))
+                .header("User-Agent", USER_AGENT),
+        )
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let html = parse_html(&response.text());
         let base = self.base_url();
         // Upstream only reads the first event list of the page.
@@ -144,7 +146,13 @@ mod tests {
     </body></html>"##;
 
     fn engine() -> Arc<SourceHut> {
-        SourceHut::from_config(&EngineConfig::new("sourcehut", "sourcehut", "srht", &["it", "repos"])).unwrap()
+        SourceHut::from_config(&EngineConfig::new(
+            "sourcehut",
+            "sourcehut",
+            "srht",
+            &["it", "repos"],
+        ))
+        .unwrap()
     }
 
     #[test]
@@ -153,14 +161,22 @@ mod tests {
         let query = Query::parse("demo", &crate::engine::EngineRegistry::default(), &[]);
         let items = engine().parse(&response, &query).unwrap();
         assert_eq!(items.len(), 1);
-        let EngineItem::Result(result) = &items[0] else { panic!("expected a result") };
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(result.title, "~alice / demo");
         assert_eq!(result.url, "https://sr.ht/~alice/demo");
         assert_eq!(result.content, "A tiny demo project");
         assert_eq!(result.template, Template::Packages);
         let metadata = &result.metadata;
-        assert_eq!(metadata.get("package_name").map(String::as_str), Some("demo"));
-        assert_eq!(metadata.get("maintainer").map(String::as_str), Some("alice"));
+        assert_eq!(
+            metadata.get("package_name").map(String::as_str),
+            Some("demo")
+        );
+        assert_eq!(
+            metadata.get("maintainer").map(String::as_str),
+            Some("alice")
+        );
         assert_eq!(metadata.get("tags").map(String::as_str), Some("rust, cli"));
     }
 
@@ -172,7 +188,10 @@ mod tests {
             request.url,
             "https://sr.ht/projects?search=demo&page=2&sort=recently-updated"
         );
-        assert_eq!(request.headers.get("user-agent").unwrap().to_str().unwrap(), USER_AGENT);
+        assert_eq!(
+            request.headers.get("user-agent").unwrap().to_str().unwrap(),
+            USER_AGENT
+        );
     }
 
     #[test]

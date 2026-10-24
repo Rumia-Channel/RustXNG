@@ -57,8 +57,10 @@ impl Engine for EuropePmc {
             ("resultType", "core".to_string()),
             ("pageSize", size.to_string()),
         ];
-        Ok(EngineRequest::get(format!("{base}?{}", query_string(&pairs)))
-            .header("Accept", "application/json"))
+        Ok(
+            EngineRequest::get(format!("{base}?{}", query_string(&pairs)))
+                .header("Accept", "application/json"),
+        )
     }
 
     fn parse(
@@ -125,15 +127,13 @@ fn authors(item: &serde_json::Value) -> Vec<String> {
 
 /// The open access PDF of the record, empty when there is none.
 fn pdf_url(item: &serde_json::Value) -> String {
-    let Some(urls) = json_path(item, "fullTextUrlList.fullTextUrl")
-        .and_then(|value| value.as_array())
+    let Some(urls) =
+        json_path(item, "fullTextUrlList.fullTextUrl").and_then(|value| value.as_array())
     else {
         return String::new();
     };
     for info in urls {
-        if json_str(info, "documentStyle") == "pdf"
-            && json_str(info, "availabilityCode") == "OA"
-        {
+        if json_str(info, "documentStyle") == "pdf" && json_str(info, "availabilityCode") == "OA" {
             return json_str(info, "url");
         }
     }

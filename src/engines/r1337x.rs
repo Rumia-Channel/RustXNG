@@ -42,7 +42,12 @@ impl Engine for _1337x {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
-        let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL).trim_end_matches('/');
+        let base = self
+            .meta
+            .base_url
+            .as_deref()
+            .unwrap_or(BASE_URL)
+            .trim_end_matches('/');
         let url = format!("{base}/search/{}/{pageno}/", encode(&query.query_text()));
         Ok(EngineRequest::get(url))
     }
@@ -53,7 +58,12 @@ impl Engine for _1337x {
         _query: &Query,
     ) -> Result<Vec<EngineItem>, EngineError> {
         let html = parse_html(&response.text());
-        let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL).trim_end_matches('/');
+        let base = self
+            .meta
+            .base_url
+            .as_deref()
+            .unwrap_or(BASE_URL)
+            .trim_end_matches('/');
         let mut results = Vec::new();
         for row in select_elements(&html, "table.table-list tbody tr")? {
             // Upstream takes the second <a> inside the name cell (the title link).
@@ -113,13 +123,8 @@ mod tests {
           </tbody>
         </table>"#;
         let response = EngineResponse::new(200, BASE_URL, html.as_bytes().to_vec());
-        let engine = _1337x::from_config(&EngineConfig::new(
-            "1337x",
-            "1337x",
-            "",
-            &["files"],
-        ))
-        .unwrap();
+        let engine =
+            _1337x::from_config(&EngineConfig::new("1337x", "1337x", "", &["files"])).unwrap();
         let items = engine
             .parse(
                 &response,
@@ -150,13 +155,8 @@ mod tests {
 
     #[test]
     fn builds_the_paged_search_url() {
-        let engine = _1337x::from_config(&EngineConfig::new(
-            "1337x",
-            "1337x",
-            "",
-            &["files"],
-        ))
-        .unwrap();
+        let engine =
+            _1337x::from_config(&EngineConfig::new("1337x", "1337x", "", &["files"])).unwrap();
         let query = Query::parse("ubuntu iso", &crate::engine::EngineRegistry::default(), &[]);
         let request = engine.build_request(&query, 2).unwrap();
         assert_eq!(request.url, "https://1337x.to/search/ubuntu%20iso/2/");

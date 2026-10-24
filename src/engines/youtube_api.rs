@@ -12,9 +12,14 @@ use crate::results::Template;
 use crate::settings::EngineConfig;
 
 const DEFAULTS: EngineDefaults = EngineDefaults {
-    categories: &["videos", "music"], shortcut: "yta", paging: false,
-    time_range_support: false, safesearch: false, language_support: true,
-    weight: 1.0, timeout: 4.0,
+    categories: &["videos", "music"],
+    shortcut: "yta",
+    paging: false,
+    time_range_support: false,
+    safesearch: false,
+    language_support: true,
+    weight: 1.0,
+    timeout: 4.0,
 };
 
 const BASE_URL: &str = "https://www.googleapis.com/youtube/v3/search";
@@ -159,9 +164,18 @@ mod tests {
                 assert_eq!(result.url, "https://www.youtube.com/watch?v=abc123");
                 assert_eq!(result.template, Template::Videos);
                 assert_eq!(result.content, "A quick intro");
-                assert_eq!(result.published_date.as_deref(), Some("2024-05-01T12:00:00+00:00"));
-                assert_eq!(result.thumbnail.as_deref(), Some("https://i.ytimg.com/vi/abc123/hqdefault.jpg"));
-                assert_eq!(result.metadata.get("iframe_src").map(String::as_str), Some("https://www.youtube-nocookie.com/embed/abc123"));
+                assert_eq!(
+                    result.published_date.as_deref(),
+                    Some("2024-05-01T12:00:00+00:00")
+                );
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://i.ytimg.com/vi/abc123/hqdefault.jpg")
+                );
+                assert_eq!(
+                    result.metadata.get("iframe_src").map(String::as_str),
+                    Some("https://www.youtube-nocookie.com/embed/abc123")
+                );
             }
             _ => panic!("expected a result"),
         }
@@ -172,19 +186,31 @@ mod tests {
         let mut query = query();
         query.locale = "ja-JP".to_string();
         let request = engine().build_request(&query, 1).unwrap();
-        assert_eq!(request.url, "https://www.googleapis.com/youtube/v3/search?part=snippet&q=rust&maxResults=20&key=KEY&relevanceLanguage=ja");
+        assert_eq!(
+            request.url,
+            "https://www.googleapis.com/youtube/v3/search?part=snippet&q=rust&maxResults=20&key=KEY&relevanceLanguage=ja"
+        );
         let without_key = YouTubeApi::from_config(&EngineConfig::new(
-            "youtube_api", "youtube_api", "yta", &["videos"],
+            "youtube_api",
+            "youtube_api",
+            "yta",
+            &["videos"],
         ))
         .unwrap();
-        assert!(matches!(without_key.build_request(&query, 1), Err(EngineError::Message(_))));
+        assert!(matches!(
+            without_key.build_request(&query, 1),
+            Err(EngineError::Message(_))
+        ));
     }
 
     #[test]
     fn api_errors_become_engine_errors() {
         let body = b"{\"error\": {\"message\": \"quota exceeded\"}}";
         let response = EngineResponse::new(200, BASE_URL, body.to_vec());
-        assert!(matches!(engine().parse(&response, &query()), Err(EngineError::Message(_))));
+        assert!(matches!(
+            engine().parse(&response, &query()),
+            Err(EngineError::Message(_))
+        ));
         let response = EngineResponse::new(200, BASE_URL, b"{}".to_vec());
         assert!(engine().parse(&response, &query()).unwrap().is_empty());
     }

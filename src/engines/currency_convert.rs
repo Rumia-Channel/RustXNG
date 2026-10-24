@@ -10,7 +10,9 @@ use std::sync::Arc;
 use regex::Regex;
 
 use crate::engine::util::*;
-use crate::engine::{Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse};
+use crate::engine::{
+    Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse,
+};
 use crate::query::Query;
 use crate::settings::EngineConfig;
 
@@ -34,7 +36,10 @@ const CURRENCIES: &[(&str, &[&str])] = &[
     ("CHF", &["chf", "swiss franc", "franc"]),
     ("CNY", &["cny", "chinese yuan", "yuan", "renminbi"]),
     ("EUR", &["eur", "euro", "euros"]),
-    ("GBP", &["gbp", "british pound", "pound", "pounds", "sterling"]),
+    (
+        "GBP",
+        &["gbp", "british pound", "pound", "pounds", "sterling"],
+    ),
     ("INR", &["inr", "indian rupee", "rupee", "rupees"]),
     ("JPY", &["jpy", "japanese yen", "yen"]),
     ("KRW", &["krw", "south korean won", "won"]),
@@ -89,7 +94,11 @@ fn conversion(text: &str) -> Option<Conversion> {
     Some(Conversion { amount, from, to })
 }
 fn request_url(meta: &EngineMeta, conversion: &Conversion) -> String {
-    let base = meta.base_url.as_deref().unwrap_or(BASE_URL).trim_end_matches('/');
+    let base = meta
+        .base_url
+        .as_deref()
+        .unwrap_or(BASE_URL)
+        .trim_end_matches('/');
     format!("{base}/1/{}/{}", conversion.from, conversion.to)
 }
 fn number(value: f64) -> String {
@@ -122,7 +131,11 @@ impl Engine for CurrencyConvert {
         Ok(EngineRequest::get(request_url(&self.meta, &conversion)))
     }
 
-    fn parse(&self, response: &EngineResponse, query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let Some(conversion) = conversion(&query.query_text()) else {
             return Ok(Vec::new());
         };
@@ -136,7 +149,9 @@ impl Engine for CurrencyConvert {
         let Some(mid) = json_path(&json, "to.0.mid") else {
             return Ok(Vec::new());
         };
-        let rate = mid.as_f64().or_else(|| mid.as_str().and_then(|text| text.parse::<f64>().ok()));
+        let rate = mid
+            .as_f64()
+            .or_else(|| mid.as_str().and_then(|text| text.parse::<f64>().ok()));
         let Some(rate) = rate else {
             return Ok(Vec::new());
         };
@@ -159,8 +174,13 @@ mod tests {
     use super::*;
 
     fn engine() -> Arc<CurrencyConvert> {
-        CurrencyConvert::from_config(&EngineConfig::new("currency", "currency_convert", "cc", &["currency", "general"]))
-            .expect("currency engine")
+        CurrencyConvert::from_config(&EngineConfig::new(
+            "currency",
+            "currency_convert",
+            "cc",
+            &["currency", "general"],
+        ))
+        .expect("currency engine")
     }
 
     fn query(text: &str) -> Query {
@@ -174,11 +194,17 @@ mod tests {
     #[test]
     fn builds_the_spice_url() {
         assert_eq!(
-            engine().build_request(&query("10 usd to eur"), 1).unwrap().url,
+            engine()
+                .build_request(&query("10 usd to eur"), 1)
+                .unwrap()
+                .url,
             "https://duckduckgo.com/js/spice/currency/1/USD/EUR"
         );
         assert_eq!(
-            engine().build_request(&query("5 dollars in euros"), 1).unwrap().url,
+            engine()
+                .build_request(&query("5 dollars in euros"), 1)
+                .unwrap()
+                .url,
             "https://duckduckgo.com/js/spice/currency/1/USD/EUR"
         );
     }
@@ -191,17 +217,26 @@ mod tests {
     #[test]
     fn answers_the_conversion() {
         let body = "ddg_spice_currency(\n{\"to\":[{\"mid\":\"0.5\"}]}\n);";
-        let items = engine().parse(&response(body), &query("10 usd to eur")).unwrap();
+        let items = engine()
+            .parse(&response(body), &query("10 usd to eur"))
+            .unwrap();
         assert_eq!(items.len(), 1);
         match &items[0] {
-            EngineItem::Answer(answer) => assert_eq!(answer, "10.0 USD = 5.0 EUR (1 USD : 0.5 EUR)"),
+            EngineItem::Answer(answer) => {
+                assert_eq!(answer, "10.0 USD = 5.0 EUR (1 USD : 0.5 EUR)")
+            }
             other => panic!("expected an answer, got {other:?}"),
         }
     }
 
     #[test]
     fn a_response_without_a_rate_is_empty() {
-        let items = engine().parse(&response("ddg_spice_currency({});"), &query("10 usd to eur")).unwrap();
+        let items = engine()
+            .parse(
+                &response("ddg_spice_currency({});"),
+                &query("10 usd to eur"),
+            )
+            .unwrap();
         assert!(items.is_empty());
     }
 }

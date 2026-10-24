@@ -73,13 +73,11 @@ impl Engine for ChinaSo {
                 pairs.push(("cate", source.to_string()));
             }
         }
-        Ok(
-            EngineRequest::get(format!(
-                "{BASE_URL}/v5/general/v1/web/search?{}",
-                query_string(&pairs)
-            ))
-            .cookie("uid", UID_COOKIE),
-        )
+        Ok(EngineRequest::get(format!(
+            "{BASE_URL}/v5/general/v1/web/search?{}",
+            query_string(&pairs)
+        ))
+        .cookie("uid", UID_COOKIE))
     }
 
     fn parse(
@@ -156,4 +154,3 @@ mod tests {
         }
     }
 }
-

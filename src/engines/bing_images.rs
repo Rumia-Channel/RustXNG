@@ -164,7 +164,10 @@ mod tests {
             EngineItem::Result(result) => {
                 assert_eq!(result.url, "https://example.com/full.jpg");
                 assert_eq!(result.title, "Example");
-                assert_eq!(result.img_src.as_deref(), Some("https://img.example.com/x.jpg"));
+                assert_eq!(
+                    result.img_src.as_deref(),
+                    Some("https://img.example.com/x.jpg")
+                );
             }
             _ => panic!("expected an image result"),
         }
@@ -182,9 +185,11 @@ mod tests {
         let mut query = Query::parse("cat", &crate::engine::EngineRegistry::default(), &[]);
         query.time_range = Some(TimeRange::Week);
         let request = engine.build_request(&query, 2).unwrap();
-        assert!(request
-            .url
-            .contains(&format!("qft=filterui%3Aage-lt{}", 60 * 24 * 7)));
+        assert!(
+            request
+                .url
+                .contains(&format!("qft=filterui%3Aage-lt{}", 60 * 24 * 7))
+        );
         assert!(request.url.contains("first=36"));
     }
 }

@@ -12,9 +12,14 @@ use crate::results::Template;
 use crate::settings::EngineConfig;
 
 const DEFAULTS: EngineDefaults = EngineDefaults {
-    categories: &["videos"], shortcut: "ru", paging: true,
-    time_range_support: false, safesearch: false, language_support: false,
-    weight: 1.0, timeout: 4.0,
+    categories: &["videos"],
+    shortcut: "ru",
+    paging: true,
+    time_range_support: false,
+    safesearch: false,
+    language_support: false,
+    weight: 1.0,
+    timeout: 4.0,
 };
 
 const BASE_URL: &str = "https://rumble.com/";
@@ -81,9 +86,12 @@ impl Engine for Rumble {
             if title.is_empty() || !is_http_url(&url) {
                 continue;
             }
-            let views = attr_of(element, "span.video-item--views", "data-value").unwrap_or_default();
-            let rumbles = attr_of(element, "span.video-item--rumbles", "data-value").unwrap_or_default();
-            let earned = attr_of(element, "span.video-item--earned", "data-value").unwrap_or_default();
+            let views =
+                attr_of(element, "span.video-item--views", "data-value").unwrap_or_default();
+            let rumbles =
+                attr_of(element, "span.video-item--rumbles", "data-value").unwrap_or_default();
+            let earned =
+                attr_of(element, "span.video-item--earned", "data-value").unwrap_or_default();
             let mut content = format!("{views} views - {rumbles} rumbles");
             if !earned.is_empty() {
                 content.push_str(&format!(" - ${earned}"));
@@ -162,10 +170,19 @@ mod tests {
                 assert_eq!(result.url, "https://rumble.com/v12345-rust-talk.html");
                 assert_eq!(result.template, Template::Videos);
                 assert_eq!(result.author.as_deref(), Some("Some Channel"));
-                assert_eq!(result.thumbnail.as_deref(), Some("https://sp.rmbl.ws/thumb.jpg"));
-                assert_eq!(result.published_date.as_deref(), Some("2024-05-01T12:00:00-04:00"));
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://sp.rmbl.ws/thumb.jpg")
+                );
+                assert_eq!(
+                    result.published_date.as_deref(),
+                    Some("2024-05-01T12:00:00-04:00")
+                );
                 assert_eq!(result.content, "1234 views - 56 rumbles - $12.34");
-                assert_eq!(result.metadata.get("length").map(String::as_str), Some("312"));
+                assert_eq!(
+                    result.metadata.get("length").map(String::as_str),
+                    Some("312")
+                );
             }
             _ => panic!("expected a result"),
         }

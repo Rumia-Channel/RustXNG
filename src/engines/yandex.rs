@@ -123,8 +123,8 @@ impl Engine for Yandex {
             if let Some(stamp) = attr_of(element, "span[data-mtime]", "data-mtime") {
                 if let Ok(seconds) = stamp.parse::<i64>() {
                     if let Some(date) = chrono::DateTime::from_timestamp(seconds, 0) {
-                        builder = builder
-                            .published_date(date.format("%Y-%m-%dT%H:%M:%SZ").to_string());
+                        builder =
+                            builder.published_date(date.format("%Y-%m-%dT%H:%M:%SZ").to_string());
                     }
                 }
             }

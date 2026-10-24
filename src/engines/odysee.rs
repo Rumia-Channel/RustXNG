@@ -12,9 +12,14 @@ use crate::results::Template;
 use crate::settings::EngineConfig;
 
 const DEFAULTS: EngineDefaults = EngineDefaults {
-    categories: &["videos"], shortcut: "od", paging: true,
-    time_range_support: true, safesearch: false, language_support: true,
-    weight: 1.0, timeout: 4.0,
+    categories: &["videos"],
+    shortcut: "od",
+    paging: true,
+    time_range_support: true,
+    safesearch: false,
+    language_support: true,
+    weight: 1.0,
+    timeout: 4.0,
 };
 
 const BASE_URL: &str = "https://lighthouse.odysee.tv/search";
@@ -97,7 +102,10 @@ impl Engine for Odysee {
                 .author(json_str(item, "channel"))
                 .published_date(release_date(&json_str(item, "release_time")))
                 .metadata("length", duration(item))
-                .metadata("iframe_src", format!("https://odysee.com/$/embed/{name}:{claim_id}"));
+                .metadata(
+                    "iframe_src",
+                    format!("https://odysee.com/$/embed/{name}:{claim_id}"),
+                );
             let thumbnail = json_str(item, "thumbnail_url");
             if !thumbnail.is_empty() {
                 builder = builder.thumbnail(format!(
@@ -178,10 +186,24 @@ mod tests {
                 assert_eq!(result.template, Template::Videos);
                 assert_eq!(result.content, "");
                 assert_eq!(result.author.as_deref(), Some("Rust Channel"));
-                assert_eq!(result.published_date.as_deref(), Some("2024-05-01T00:00:00"));
-                assert_eq!(result.metadata.get("length").map(String::as_str), Some("07:05"));
-                assert_eq!(result.metadata.get("iframe_src").map(String::as_str), Some("https://odysee.com/$/embed/some-video:abc123"));
-                assert_eq!(result.thumbnail.as_deref(), Some("https://thumbnails.odycdn.com/optimize/s:390:0/quality:85/plain/https://thumbs.odycdn.com/abc.jpg"));
+                assert_eq!(
+                    result.published_date.as_deref(),
+                    Some("2024-05-01T00:00:00")
+                );
+                assert_eq!(
+                    result.metadata.get("length").map(String::as_str),
+                    Some("07:05")
+                );
+                assert_eq!(
+                    result.metadata.get("iframe_src").map(String::as_str),
+                    Some("https://odysee.com/$/embed/some-video:abc123")
+                );
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some(
+                        "https://thumbnails.odycdn.com/optimize/s:390:0/quality:85/plain/https://thumbs.odycdn.com/abc.jpg"
+                    )
+                );
             }
             _ => panic!("expected a result"),
         }
@@ -193,7 +215,11 @@ mod tests {
         query.locale = "ja-JP".to_string();
         query.time_range = Some(TimeRange::Week);
         let request = engine().build_request(&query, 2).unwrap();
-        assert!(request.url.starts_with("https://lighthouse.odysee.tv/search?"));
+        assert!(
+            request
+                .url
+                .starts_with("https://lighthouse.odysee.tv/search?")
+        );
         assert!(request.url.contains("s=rust"));
         assert!(request.url.contains("size=20"));
         assert!(request.url.contains("from=20"));

@@ -71,10 +71,12 @@ impl Engine for Yep {
         if !language.is_empty() && language != "all" {
             pairs.push(("hl", language));
         }
-        Ok(EngineRequest::get(format!("{base}/search?{}", query_string(&pairs)))
-            .header("Referer", "https://yep.com/")
-            .header("Origin", WEB_BASE_URL)
-            .header("x-csrf-protection", "1"))
+        Ok(
+            EngineRequest::get(format!("{base}/search?{}", query_string(&pairs)))
+                .header("Referer", "https://yep.com/")
+                .header("Origin", WEB_BASE_URL)
+                .header("x-csrf-protection", "1"),
+        )
     }
 
     fn parse(
@@ -147,11 +149,17 @@ mod tests {
         assert!(request.url.contains("limit=20"));
         assert!(request.url.contains("hl=de"));
         assert_eq!(
-            request.headers.get("referer").and_then(|value| value.to_str().ok()),
+            request
+                .headers
+                .get("referer")
+                .and_then(|value| value.to_str().ok()),
             Some("https://yep.com/")
         );
         assert_eq!(
-            request.headers.get("origin").and_then(|value| value.to_str().ok()),
+            request
+                .headers
+                .get("origin")
+                .and_then(|value| value.to_str().ok()),
             Some("https://yep.com")
         );
     }
@@ -159,7 +167,12 @@ mod tests {
     #[test]
     fn missing_results_and_broken_bodies_are_handled() {
         let response = EngineResponse::new(200, BASE_URL, br##"[{"query":"rust"},{}]"##.to_vec());
-        assert!(engine().parse(&response, &query("rust")).unwrap().is_empty());
+        assert!(
+            engine()
+                .parse(&response, &query("rust"))
+                .unwrap()
+                .is_empty()
+        );
         let broken = EngineResponse::new(200, BASE_URL, b"not json".to_vec());
         assert!(matches!(
             engine().parse(&broken, &query("rust")),

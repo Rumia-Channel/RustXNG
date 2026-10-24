@@ -122,8 +122,13 @@ mod tests {
     use super::*;
 
     fn engine() -> Arc<Duden> {
-        Duden::from_config(&EngineConfig::new("duden", "duden", "du", &["dictionaries"]))
-            .expect("duden engine")
+        Duden::from_config(&EngineConfig::new(
+            "duden",
+            "duden",
+            "du",
+            &["dictionaries"],
+        ))
+        .expect("duden engine")
     }
 
     fn query(text: &str) -> Query {
@@ -175,6 +180,11 @@ mod tests {
     #[test]
     fn a_missing_page_is_empty() {
         let response = EngineResponse::new(404, "https://www.duden.de", Vec::new());
-        assert!(engine().parse(&response, &query("Katze")).unwrap().is_empty());
+        assert!(
+            engine()
+                .parse(&response, &query("Katze"))
+                .unwrap()
+                .is_empty()
+        );
     }
 }

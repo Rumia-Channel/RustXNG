@@ -41,7 +41,11 @@ impl Iconify {
 
     /// The base URL without its trailing slash.
     fn base(&self) -> String {
-        let base = self.meta.base_url.clone().unwrap_or_else(|| BASE_URL.to_string());
+        let base = self
+            .meta
+            .base_url
+            .clone()
+            .unwrap_or_else(|| BASE_URL.to_string());
         base.trim_end_matches('/').to_string()
     }
 }
@@ -145,7 +149,9 @@ mod tests {
     #[test]
     fn honours_the_page_size() {
         let mut config = EngineConfig::new("iconify", "iconify", "ico", &["icons"]);
-        config.extra.insert("page_size".to_string(), toml::Value::Integer(10));
+        config
+            .extra
+            .insert("page_size".to_string(), toml::Value::Integer(10));
         let engine = Iconify::from_config(&config).unwrap();
         let query = Query::parse("cat", &crate::engine::EngineRegistry::default(), &[]);
         let request = engine.build_request(&query, 2).unwrap();

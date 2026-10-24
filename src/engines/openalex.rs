@@ -64,8 +64,10 @@ impl Engine for OpenAlex {
                 pairs.push(("mailto", mailto.to_string()));
             }
         }
-        Ok(EngineRequest::get(format!("{base}?{}", query_string(&pairs)))
-            .header("Accept", "application/json"))
+        Ok(
+            EngineRequest::get(format!("{base}?{}", query_string(&pairs)))
+                .header("Accept", "application/json"),
+        )
     }
 
     fn parse(
@@ -89,25 +91,58 @@ impl Engine for OpenAlex {
                 continue;
             }
             let biblio = json_path(item, "biblio");
-            let volume = biblio.map(|value| json_str(value, "volume")).unwrap_or_default();
-            let number = biblio.map(|value| json_str(value, "issue")).unwrap_or_default();
+            let volume = biblio
+                .map(|value| json_str(value, "volume"))
+                .unwrap_or_default();
+            let number = biblio
+                .map(|value| json_str(value, "issue"))
+                .unwrap_or_default();
             let doi = json_str(item, "doi");
-            let doi = doi.strip_prefix("https://doi.org/").unwrap_or(&doi).to_string();
+            let doi = doi
+                .strip_prefix("https://doi.org/")
+                .unwrap_or(&doi)
+                .to_string();
             let comments = json_path(item, "cited_by_count")
                 .and_then(|value| value.as_i64())
                 .map(|count| format!("{count} citations"))
                 .unwrap_or_default();
             results.push(
                 ResultBuilder::new(url, title)
-                    .content(reconstruct_abstract(json_path(item, "abstract_inverted_index")))
+                    .content(reconstruct_abstract(json_path(
+                        item,
+                        "abstract_inverted_index",
+                    )))
                     .author(names(item, "authorships", "author.display_name").join(", "))
-                    .published_date(parse_date(&json_str(item, "publication_date")).unwrap_or_default())
+                    .published_date(
+                        parse_date(&json_str(item, "publication_date")).unwrap_or_default(),
+                    )
                     .metadata("doi", doi)
-                    .metadata("journal", first_value(item, &["host_venue.display_name", "primary_location.source.display_name"]))
-                    .metadata("publisher", first_value(item, &["host_venue.publisher", "primary_location.source.host_organization_name"]))
+                    .metadata(
+                        "journal",
+                        first_value(
+                            item,
+                            &[
+                                "host_venue.display_name",
+                                "primary_location.source.display_name",
+                            ],
+                        ),
+                    )
+                    .metadata(
+                        "publisher",
+                        first_value(
+                            item,
+                            &[
+                                "host_venue.publisher",
+                                "primary_location.source.host_organization_name",
+                            ],
+                        ),
+                    )
                     .metadata("type", json_str(item, "type"))
                     .metadata("tags", names(item, "concepts", "display_name").join(", "))
-                    .metadata("pdf_url", first_value(item, &["primary_location.pdf_url", "open_access.oa_url"]))
+                    .metadata(
+                        "pdf_url",
+                        first_value(item, &["primary_location.pdf_url", "open_access.oa_url"]),
+                    )
                     .metadata("pages", biblio.map(pages).unwrap_or_default())
                     .metadata("volume", volume)
                     .metadata("number", number)
@@ -121,10 +156,14 @@ impl Engine for OpenAlex {
 
 /// Upstream rebuilds the abstract from the inverted index of OpenAlex.
 fn reconstruct_abstract(value: Option<&serde_json::Value>) -> String {
-    let Some(index) = value.and_then(|value| value.as_object()) else { return String::new() };
+    let Some(index) = value.and_then(|value| value.as_object()) else {
+        return String::new();
+    };
     let mut tokens: Vec<(u64, &str)> = Vec::new();
     for (token, positions) in index {
-        let Some(positions) = positions.as_array() else { continue };
+        let Some(positions) = positions.as_array() else {
+            continue;
+        };
         for position in positions {
             if let Some(position) = position.as_u64() {
                 tokens.push((position, token.as_str()));
@@ -132,7 +171,11 @@ fn reconstruct_abstract(value: Option<&serde_json::Value>) -> String {
         }
     }
     tokens.sort_by_key(|(position, _)| *position);
-    tokens.into_iter().map(|(_, token)| token).collect::<Vec<_>>().join(" ")
+    tokens
+        .into_iter()
+        .map(|(_, token)| token)
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// OpenAlex may return YYYY, YYYY-MM or YYYY-MM-DD; upstream parses all three.
@@ -141,7 +184,9 @@ fn parse_date(value: &str) -> Option<String> {
     match parts.as_slice() {
         [year] if year.len() == 4 => Some(format!("{year}-01-01")),
         [year, month] if year.len() == 4 && month.len() == 2 => Some(format!("{year}-{month}-01")),
-        [year, month, day] if year.len() == 4 && month.len() == 2 && day.len() == 2 => Some(value.to_string()),
+        [year, month, day] if year.len() == 4 && month.len() == 2 && day.len() == 2 => {
+            Some(value.to_string())
+        }
         _ => None,
     }
 }
@@ -150,12 +195,22 @@ fn parse_date(value: &str) -> Option<String> {
 fn pages(biblio: &serde_json::Value) -> String {
     let first = json_str(biblio, "first_page");
     let last = json_str(biblio, "last_page");
-    if first.is_empty() { last } else if last.is_empty() { first } else { format!("{first}-{last}") }
+    if first.is_empty() {
+        last
+    } else if last.is_empty() {
+        first
+    } else {
+        format!("{first}-{last}")
+    }
 }
 
 /// The first non empty JSON string among the given paths.
 fn first_value(item: &serde_json::Value, paths: &[&str]) -> String {
-    paths.iter().map(|path| json_str(item, path)).find(|value| !value.is_empty()).unwrap_or_default()
+    paths
+        .iter()
+        .map(|path| json_str(item, path))
+        .find(|value| !value.is_empty())
+        .unwrap_or_default()
 }
 
 /// The field of every object of the array at the given key.
@@ -163,7 +218,11 @@ fn names(item: &serde_json::Value, key: &str, field: &str) -> Vec<String> {
     json_path(item, key)
         .and_then(|value| value.as_array())
         .map(|entries| {
-            entries.iter().map(|entry| json_str(entry, field)).filter(|name| !name.is_empty()).collect()
+            entries
+                .iter()
+                .map(|entry| json_str(entry, field))
+                .filter(|name| !name.is_empty())
+                .collect()
         })
         .unwrap_or_default()
 }
@@ -174,7 +233,10 @@ mod tests {
 
     fn engine() -> Arc<OpenAlex> {
         let mut config = EngineConfig::new("openalex", "openalex", "oa", &["science"]);
-        config.extra.insert("mailto".into(), toml::Value::String("oa@example.com".into()));
+        config.extra.insert(
+            "mailto".into(),
+            toml::Value::String("oa@example.com".into()),
+        );
         OpenAlex::from_config(&config).unwrap()
     }
 
@@ -185,15 +247,23 @@ mod tests {
         let query = Query::parse("rust", &crate::engine::EngineRegistry::default(), &[]);
         let items = engine().parse(&response, &query).unwrap();
         assert_eq!(items.len(), 1);
-        let EngineItem::Result(result) = &items[0] else { panic!("expected a result") };
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(result.url, "https://example.com/paper");
         assert_eq!(result.content, "Rust is fast");
         assert_eq!(result.author.as_deref(), Some("Alice, Bob"));
         assert_eq!(result.published_date.as_deref(), Some("2023-05-01"));
         let expected = [
-            ("doi", "10.1000/xyz"), ("journal", "Journal of Rust"), ("publisher", "Rust Press"),
-            ("pages", "10-20"), ("volume", "3"), ("number", "2"), ("comments", "7 citations"),
-            ("tags", "Computer science"), ("pdf_url", "https://example.com/paper.pdf"),
+            ("doi", "10.1000/xyz"),
+            ("journal", "Journal of Rust"),
+            ("publisher", "Rust Press"),
+            ("pages", "10-20"),
+            ("volume", "3"),
+            ("number", "2"),
+            ("comments", "7 citations"),
+            ("tags", "Computer science"),
+            ("pdf_url", "https://example.com/paper.pdf"),
         ];
         for (key, value) in expected {
             assert_eq!(result.metadata.get(key).map(String::as_str), Some(value));
@@ -205,9 +275,20 @@ mod tests {
         let mut query = Query::parse("rust", &crate::engine::EngineRegistry::default(), &[]);
         query.languages = vec!["fr".to_string()];
         let request = engine().build_request(&query, 1).unwrap();
-        let parts = ["search=rust", "page=1", "per-page=10", "sort=relevance_score%3Adesc", "filter=language%3Afr", "mailto=oa%40example.com"];
+        let parts = [
+            "search=rust",
+            "page=1",
+            "per-page=10",
+            "sort=relevance_score%3Adesc",
+            "filter=language%3Afr",
+            "mailto=oa%40example.com",
+        ];
         for part in parts {
-            assert!(request.url.contains(part), "missing {part} in {}", request.url);
+            assert!(
+                request.url.contains(part),
+                "missing {part} in {}",
+                request.url
+            );
         }
     }
 }

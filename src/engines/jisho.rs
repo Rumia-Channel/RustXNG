@@ -35,18 +35,31 @@ pub struct Jisho {
 
 impl Jisho {
     pub fn from_config(config: &EngineConfig) -> Result<Arc<Self>, String> {
-        Ok(Arc::new(Self { meta: EngineMeta::from_config(config, DEFAULTS) }))
+        Ok(Arc::new(Self {
+            meta: EngineMeta::from_config(config, DEFAULTS),
+        }))
     }
 }
 
 fn site(meta: &EngineMeta) -> String {
-    meta.base_url.as_deref().unwrap_or(SITE).trim_end_matches('/').to_string()
+    meta.base_url
+        .as_deref()
+        .unwrap_or(SITE)
+        .trim_end_matches('/')
+        .to_string()
 }
 
 fn strings(value: &Value, key: &str) -> Vec<String> {
-    value.get(key).and_then(Value::as_array).map(|items| {
-        items.iter().filter_map(|item| item.as_str().map(str::to_string)).collect()
-    }).unwrap_or_default()
+    value
+        .get(key)
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 fn capitalize(value: &str) -> String {
     let mut chars = value.chars();
@@ -56,13 +69,25 @@ fn capitalize(value: &str) -> String {
     }
 }
 fn alternative_forms(page: &Value) -> Vec<String> {
-    let Some(entries) = page.get("japanese").and_then(Value::as_array) else { return Vec::new() };
+    let Some(entries) = page.get("japanese").and_then(Value::as_array) else {
+        return Vec::new();
+    };
     let mut forms = Vec::new();
     for entry in entries {
-        let word = entry.get("word").and_then(Value::as_str).unwrap_or_default();
-        let reading = entry.get("reading").and_then(Value::as_str).unwrap_or_default();
+        let word = entry
+            .get("word")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let reading = entry
+            .get("reading")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
         if !word.is_empty() {
-            forms.push(if reading.is_empty() { word.to_string() } else { format!("{word} ({reading})") });
+            forms.push(if reading.is_empty() {
+                word.to_string()
+            } else {
+                format!("{word} ({reading})")
+            });
         } else if !reading.is_empty() {
             forms.push(reading.to_string());
         }
@@ -70,13 +95,19 @@ fn alternative_forms(page: &Value) -> Vec<String> {
     forms
 }
 fn sense_definitions(page: &Value) -> Vec<(String, String, String)> {
-    let Some(senses) = page.get("senses").and_then(Value::as_array) else { return Vec::new() };
+    let Some(senses) = page.get("senses").and_then(Value::as_array) else {
+        return Vec::new();
+    };
     let mut definitions = Vec::new();
     for sense in senses {
         let tags = strings(sense, "tags");
         let info = strings(sense, "info");
         let mut extra = if tags.is_empty() {
-            if info.is_empty() { String::new() } else { format!("{}. ", capitalize(&info.join(", "))) }
+            if info.is_empty() {
+                String::new()
+            } else {
+                format!("{}. ", capitalize(&info.join(", ")))
+            }
         } else if info.is_empty() {
             format!("{}. ", tags.join(", "))
         } else {
@@ -89,31 +120,49 @@ fn sense_definitions(page: &Value) -> Vec<(String, String, String)> {
         if extra.ends_with(' ') {
             extra.pop();
         }
-        definitions.push((strings(sense, "parts_of_speech").join(", "), strings(sense, "english_definitions").join("; "), extra));
+        definitions.push((
+            strings(sense, "parts_of_speech").join(", "),
+            strings(sense, "english_definitions").join("; "),
+            extra,
+        ));
     }
     definitions
 }
 fn infobox(forms: &[String], url: &str, definitions: &[(String, String, String)]) -> Infobox {
     let mut content = String::new();
     if forms.len() > 1 {
-        content.push_str(&format!("<p><i>Other forms:</i> {}</p>", forms[1..].join(", ")));
+        content.push_str(&format!(
+            "<p><i>Other forms:</i> {}</p>",
+            forms[1..].join(", ")
+        ));
     }
     content.push_str("<small>JMdict and JMnedict by EDRDG, CC BY-SA 3.0.</small><ul>");
     for (part_of_speech, english, extra) in definitions {
         if part_of_speech == "Wikipedia definition" {
             content.push_str("</ul><small>Wikipedia, CC BY-SA 3.0.</small><ul>");
         }
-        let part = if part_of_speech.is_empty() { String::new() } else { format!("<i>{part_of_speech}</i>: ") };
-        let note = if extra.is_empty() { String::new() } else { format!(" ({extra})") };
+        let part = if part_of_speech.is_empty() {
+            String::new()
+        } else {
+            format!("<i>{part_of_speech}</i>: ")
+        };
+        let note = if extra.is_empty() {
+            String::new()
+        } else {
+            format!(" ({extra})")
+        };
         content.push_str(&format!("<li>{part}{english}{note}</li>"));
     }
     content.push_str("</ul>");
     Infobox {
         id: format!("jisho-{}", url.rsplit('/').next().unwrap_or_default()),
-        title: forms[0].clone(),
+        title: forms.first().cloned().unwrap_or_default(),
         content,
         url: Some(url.to_string()),
-        urls: vec![InfoboxUrl { title: "Jisho.org".to_string(), url: url.to_string() }],
+        urls: vec![InfoboxUrl {
+            title: "Jisho.org".to_string(),
+            url: url.to_string(),
+        }],
         ..Default::default()
     }
 }
@@ -124,11 +173,19 @@ impl Engine for Jisho {
     }
 
     fn build_request(&self, query: &Query, _pageno: u32) -> Result<EngineRequest, EngineError> {
-        let url = format!("{}/api/v1/search/words?keyword={}", site(&self.meta), encode(&query.query_text()));
+        let url = format!(
+            "{}/api/v1/search/words?keyword={}",
+            site(&self.meta),
+            encode(&query.query_text())
+        );
         Ok(EngineRequest::get(url).header("Accept", "application/json"))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
         let Some(pages) = json_path(&json, "data").and_then(Value::as_array) else {
             return Ok(Vec::new());
@@ -137,8 +194,12 @@ impl Engine for Jisho {
         let mut items = Vec::new();
         let mut first = true;
         for page in pages {
-            let Some(slug) = page.get("slug").and_then(Value::as_str) else { continue };
-            let Some(url) = absolute_url(slug, &base) else { continue };
+            let Some(slug) = page.get("slug").and_then(Value::as_str) else {
+                continue;
+            };
+            let Some(url) = absolute_url(slug, &base) else {
+                continue;
+            };
             if slug.is_empty() || !(url.starts_with("http://") || url.starts_with("https://")) {
                 continue;
             }
@@ -147,12 +208,24 @@ impl Engine for Jisho {
                 continue;
             }
             let definitions = sense_definitions(page);
-            let sentence = definitions.iter().map(|(_, english, _)| format!("{english}.")).collect::<Vec<_>>().join(" ");
+            let sentence = definitions
+                .iter()
+                .map(|(_, english, _)| format!("{english}."))
+                .collect::<Vec<_>>()
+                .join(" ");
             let mut chars = sentence.chars();
             let head: String = chars.by_ref().take(300).collect();
-            let content = if chars.next().is_some() { format!("{head}...") } else { head };
+            let content = if chars.next().is_some() {
+                format!("{head}...")
+            } else {
+                head
+            };
             let title = forms.join(", ");
-            items.push(ResultBuilder::new(url.clone(), title).content(content).build());
+            items.push(
+                ResultBuilder::new(url.clone(), title)
+                    .content(content)
+                    .build(),
+            );
             if first {
                 first = false;
                 items.push(EngineItem::Infobox(infobox(&forms, &url, &definitions)));
@@ -167,7 +240,13 @@ mod tests {
     use super::*;
 
     fn engine() -> Arc<Jisho> {
-        Jisho::from_config(&EngineConfig::new("jisho", "jisho", "js", &["dictionaries"])).unwrap()
+        Jisho::from_config(&EngineConfig::new(
+            "jisho",
+            "jisho",
+            "js",
+            &["dictionaries"],
+        ))
+        .unwrap()
     }
 
     fn query(text: &str) -> Query {
@@ -180,7 +259,10 @@ mod tests {
 
     #[test]
     fn builds_the_api_url() {
-        assert_eq!(engine().build_request(&query("neko"), 1).unwrap().url, "https://jisho.org/api/v1/search/words?keyword=neko");
+        assert_eq!(
+            engine().build_request(&query("neko"), 1).unwrap().url,
+            "https://jisho.org/api/v1/search/words?keyword=neko"
+        );
     }
 
     #[test]
@@ -214,6 +296,11 @@ mod tests {
 
     #[test]
     fn an_empty_answer_is_empty() {
-        assert!(engine().parse(&body(&serde_json::json!({})), &query("neko")).unwrap().is_empty());
+        assert!(
+            engine()
+                .parse(&body(&serde_json::json!({})), &query("neko"))
+                .unwrap()
+                .is_empty()
+        );
     }
 }

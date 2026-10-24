@@ -12,8 +12,14 @@ use crate::results::Template;
 use crate::settings::EngineConfig;
 
 const DEFAULTS: EngineDefaults = EngineDefaults {
-    categories: &["stock images"], shortcut: "1x", paging: false, time_range_support: false,
-    safesearch: false, language_support: false, weight: 1.0, timeout: 3.0,
+    categories: &["stock images"],
+    shortcut: "1x",
+    paging: false,
+    time_range_support: false,
+    safesearch: false,
+    language_support: false,
+    weight: 1.0,
+    timeout: 3.0,
 };
 
 const BASE_URL: &str = "https://1x.com";
@@ -41,18 +47,29 @@ impl Engine for Www1x {
         let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL);
         let search = match self.meta.search_url.as_deref() {
             Some(url) => url.to_string(),
-            None => format!("{}/backend/search.php?{{query}}", base.trim_end_matches('/')),
+            None => format!(
+                "{}/backend/search.php?{{query}}",
+                base.trim_end_matches('/')
+            ),
         };
         let encoded = query_string(&[("q", query.query_text())]);
         Ok(EngineRequest::get(search.replace("{query}", &encoded)))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let body = response.text();
         let pattern = regex::Regex::new(DATA_RE)
             .map_err(|error| EngineError::Parse(format!("invalid data pattern: {error}")))?;
-        let Some(captures) = pattern.captures(&body) else { return Ok(Vec::new()) };
-        let Some(payload) = captures.get(1) else { return Ok(Vec::new()) };
+        let Some(captures) = pattern.captures(&body) else {
+            return Ok(Vec::new());
+        };
+        let Some(payload) = captures.get(1) else {
+            return Ok(Vec::new());
+        };
         // The XML payload keeps the result markup as escaped text.
         let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL);
         let html = parse_html(&decode_entities(payload.as_str()));
@@ -101,8 +118,14 @@ mod tests {
                 assert_eq!(result.url, "https://1x.com/photo/123");
                 assert_eq!(result.title, "A landscape");
                 assert_eq!(result.template, Template::Images);
-                assert_eq!(result.thumbnail.as_deref(), Some("https://gallery.1x.com/media/123.jpg"));
-                assert_eq!(result.img_src.as_deref(), Some("https://gallery.1x.com/media/123.jpg"));
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://gallery.1x.com/media/123.jpg")
+                );
+                assert_eq!(
+                    result.img_src.as_deref(),
+                    Some("https://gallery.1x.com/media/123.jpg")
+                );
             }
             _ => panic!("expected an image result"),
         }

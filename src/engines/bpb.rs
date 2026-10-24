@@ -126,8 +126,8 @@ mod tests {
                         "authors":[{"name":"Jane"}]}}
         ]}"#;
         let response = EngineResponse::new(200, BASE_URL, body.as_bytes().to_vec());
-        let engine = Bpb::from_config(&EngineConfig::new("bpb", "bpb", "bpb", &["general"]))
-            .unwrap();
+        let engine =
+            Bpb::from_config(&EngineConfig::new("bpb", "bpb", "bpb", &["general"])).unwrap();
         let items = engine
             .parse(
                 &response,

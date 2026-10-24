@@ -150,8 +150,14 @@ mod tests {
                 assert_eq!(result.title, "Cat on a wall");
                 assert_eq!(result.content, "A cat.");
                 assert_eq!(result.author.as_deref(), Some("Alice"));
-                assert_eq!(result.img_src.as_deref(), Some("https://live.staticflickr.com/1/o.jpg"));
-                assert_eq!(result.thumbnail.as_deref(), Some("https://live.staticflickr.com/1/n.jpg"));
+                assert_eq!(
+                    result.img_src.as_deref(),
+                    Some("https://live.staticflickr.com/1/o.jpg")
+                );
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://live.staticflickr.com/1/n.jpg")
+                );
                 assert_eq!(result.template, Template::Images);
             }
             _ => panic!("expected an image result"),
@@ -159,7 +165,10 @@ mod tests {
         match &items[1] {
             EngineItem::Result(result) => {
                 assert_eq!(result.title, "Small");
-                assert_eq!(result.thumbnail.as_deref(), Some("https://live.staticflickr.com/3/z.jpg"));
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://live.staticflickr.com/3/z.jpg")
+                );
             }
             _ => panic!("expected an image result"),
         }

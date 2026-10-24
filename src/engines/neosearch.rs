@@ -14,8 +14,14 @@ use crate::query::Query;
 use crate::settings::EngineConfig;
 
 const DEFAULTS: EngineDefaults = EngineDefaults {
-    categories: &["general"], shortcut: "neo", paging: false, time_range_support: false,
-    safesearch: false, language_support: false, weight: 1.0, timeout: 4.0,
+    categories: &["general"],
+    shortcut: "neo",
+    paging: false,
+    time_range_support: false,
+    safesearch: false,
+    language_support: false,
+    weight: 1.0,
+    timeout: 4.0,
 };
 
 const BASE_URL: &str = "https://neosearch.org";
@@ -54,7 +60,11 @@ impl Engine for Neosearch {
         Ok(request)
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let body = response.text();
         // The first line announces the location, the last one carries the results.
         let Some(line) = body.lines().rev().find(|line| !line.trim().is_empty()) else {
@@ -83,7 +93,9 @@ impl Engine for Neosearch {
                 }
             }
         }
-        if let Some(suggestions) = json_path(&json, "suggestions").and_then(|value| value.as_array()) {
+        if let Some(suggestions) =
+            json_path(&json, "suggestions").and_then(|value| value.as_array())
+        {
             for suggestion in suggestions {
                 if let Some(text) = suggestion.as_str() {
                     if !text.trim().is_empty() {
@@ -104,7 +116,13 @@ fn is_http_url(url: &str) -> bool {
 mod tests {
     use super::*;
     fn engine() -> Arc<Neosearch> {
-        Neosearch::from_config(&EngineConfig::new("neosearch", "neosearch", "neo", &["general"])).unwrap()
+        Neosearch::from_config(&EngineConfig::new(
+            "neosearch",
+            "neosearch",
+            "neo",
+            &["general"],
+        ))
+        .unwrap()
     }
 
     #[test]
@@ -132,7 +150,10 @@ mod tests {
     #[test]
     fn builds_a_post_with_the_token_and_location() {
         let mut config = EngineConfig::new("neosearch", "neosearch", "neo", &["general"]);
-        config.extra.insert("xsrf_token".to_string(), toml::Value::String("token-1".to_string()));
+        config.extra.insert(
+            "xsrf_token".to_string(),
+            toml::Value::String("token-1".to_string()),
+        );
         let engine = Neosearch::from_config(&config).unwrap();
         let mut query = Query::parse("rust", &crate::engine::EngineRegistry::default(), &[]);
         query.locale = "de-DE".to_string();
@@ -140,7 +161,10 @@ mod tests {
         assert_eq!(request.method, crate::engine::Method::Post);
         assert_eq!(request.url, "https://neosearch.org/search");
         assert_eq!(
-            request.headers.get("x-xsrf-token").and_then(|value| value.to_str().ok()),
+            request
+                .headers
+                .get("x-xsrf-token")
+                .and_then(|value| value.to_str().ok()),
             Some("token-1")
         );
         let body = request.json.clone().unwrap();

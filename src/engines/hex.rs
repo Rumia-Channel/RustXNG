@@ -69,7 +69,11 @@ impl Engine for Hex {
         )
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
         let Some(packages) = json.as_array() else {
             return Ok(Vec::new());
@@ -87,7 +91,11 @@ impl Engine for Hex {
                     links
                         .iter()
                         .map(|(key, value)| {
-                            format!("{}: {}", linked_term(key), value.as_str().unwrap_or_default())
+                            format!(
+                                "{}: {}",
+                                linked_term(key),
+                                value.as_str().unwrap_or_default()
+                            )
                         })
                         .collect::<Vec<_>>()
                         .join(" | ")
@@ -171,18 +179,35 @@ mod tests {
         let query = Query::parse("plug", &crate::engine::EngineRegistry::default(), &[]);
         let items = engine().parse(&response, &query).unwrap();
         assert_eq!(items.len(), 1);
-        let EngineItem::Result(result) = &items[0] else { panic!("expected a result") };
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(result.title, "plug");
         assert_eq!(result.url, "https://hex.pm/packages/plug");
         assert_eq!(result.content, "A web framework");
-        assert_eq!(result.published_date.as_deref(), Some("2024-01-02T03:04:05Z"));
+        assert_eq!(
+            result.published_date.as_deref(),
+            Some("2024-01-02T03:04:05Z")
+        );
         assert_eq!(result.template, Template::Packages);
         let metadata = &result.metadata;
-        assert_eq!(metadata.get("package_name").map(String::as_str), Some("plug"));
+        assert_eq!(
+            metadata.get("package_name").map(String::as_str),
+            Some("plug")
+        );
         assert_eq!(metadata.get("version").map(String::as_str), Some("1.15.0"));
-        assert_eq!(metadata.get("maintainer").map(String::as_str), Some("alice, bob"));
-        assert_eq!(metadata.get("license_name").map(String::as_str), Some("Apache-2.0"));
-        assert_eq!(metadata.get("homepage").map(String::as_str), Some("https://hexdocs.pm/plug/"));
+        assert_eq!(
+            metadata.get("maintainer").map(String::as_str),
+            Some("alice, bob")
+        );
+        assert_eq!(
+            metadata.get("license_name").map(String::as_str),
+            Some("Apache-2.0")
+        );
+        assert_eq!(
+            metadata.get("homepage").map(String::as_str),
+            Some("https://hexdocs.pm/plug/")
+        );
         assert_eq!(
             metadata.get("links").map(String::as_str),
             Some("GitHub: https://github.com/elixir-plug/plug | Homepage: https://example.com")
@@ -197,7 +222,10 @@ mod tests {
             request.url,
             "https://hex.pm/api/packages/?page=2&per_page=10&sort=recent_downloads&search=plug"
         );
-        assert_eq!(request.headers.get("accept").unwrap().to_str().unwrap(), "application/json");
+        assert_eq!(
+            request.headers.get("accept").unwrap().to_str().unwrap(),
+            "application/json"
+        );
     }
 
     #[test]

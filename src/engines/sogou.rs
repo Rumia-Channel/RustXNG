@@ -3,17 +3,23 @@
 
 use std::sync::Arc;
 
-use scraper::ElementRef;
 use crate::engine::util::*;
 use crate::engine::{
     Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse,
 };
 use crate::query::{Query, TimeRange};
 use crate::settings::EngineConfig;
+use scraper::ElementRef;
 
 const DEFAULTS: EngineDefaults = EngineDefaults {
-    categories: &["general"], shortcut: "sogou", paging: true, time_range_support: true,
-    safesearch: false, language_support: false, weight: 1.0, timeout: 4.0,
+    categories: &["general"],
+    shortcut: "sogou",
+    paging: true,
+    time_range_support: true,
+    safesearch: false,
+    language_support: false,
+    weight: 1.0,
+    timeout: 4.0,
 };
 
 const BASE_URL: &str = "https://www.sogou.com";
@@ -48,12 +54,22 @@ impl Engine for Sogou {
             pairs.push(("s_from", value.to_string()));
             pairs.push(("tsn", "1".to_string()));
         }
-        Ok(EngineRequest::get(format!("{}/web?{}", base.trim_end_matches('/'), query_string(&pairs))))
+        Ok(EngineRequest::get(format!(
+            "{}/web?{}",
+            base.trim_end_matches('/'),
+            query_string(&pairs)
+        )))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         if response.status == 302
-            && response.header("location").is_some_and(|location| location.contains("antispider"))
+            && response
+                .header("location")
+                .is_some_and(|location| location.contains("antispider"))
         {
             return Err(EngineError::Captcha);
         }
@@ -141,9 +157,11 @@ fn parse_date(text: &str) -> Option<String> {
         if year.len() != 4 || !digits(year) || !digits(month) || !digits(day) {
             continue;
         }
-        let (Ok(year), Ok(month), Ok(day)) =
-            (year.parse::<u32>(), month.parse::<u32>(), day.parse::<u32>())
-        else {
+        let (Ok(year), Ok(month), Ok(day)) = (
+            year.parse::<u32>(),
+            month.parse::<u32>(),
+            day.parse::<u32>(),
+        ) else {
             continue;
         };
         return Some(format!("{year:04}-{month:02}-{day:02}"));
@@ -192,7 +210,10 @@ mod tests {
                 assert_eq!(result.url, "https://example.com/beta");
                 assert_eq!(result.title, "Beta");
                 assert_eq!(result.content, "Beta summary");
-                assert_eq!(result.thumbnail.as_deref(), Some("https://img.example.com/b.jpg"));
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://img.example.com/b.jpg")
+                );
                 assert_eq!(result.published_date.as_deref(), Some("2023-12-01"));
             }
             _ => panic!("expected a result"),
@@ -202,9 +223,14 @@ mod tests {
     #[test]
     fn detects_the_antispider_redirect() {
         let mut response = EngineResponse::new(302, BASE_URL, Vec::new());
-        response.headers.insert("location".into(), "http://www.sogou.com/antispider/".into());
+        response
+            .headers
+            .insert("location".into(), "http://www.sogou.com/antispider/".into());
         let query = Query::parse("rust", &crate::engine::EngineRegistry::default(), &[]);
-        assert!(matches!(engine().parse(&response, &query), Err(EngineError::Captcha)));
+        assert!(matches!(
+            engine().parse(&response, &query),
+            Err(EngineError::Captcha)
+        ));
     }
 
     #[test]

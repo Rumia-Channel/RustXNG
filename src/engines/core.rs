@@ -46,7 +46,10 @@ impl Engine for Core {
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
         let pairs: Vec<(&str, String)> = vec![
             ("q", query.query_text()),
-            ("offset", ((pageno.saturating_sub(1)) * PAGE_SIZE).to_string()),
+            (
+                "offset",
+                ((pageno.saturating_sub(1)) * PAGE_SIZE).to_string(),
+            ),
             ("limit", PAGE_SIZE.to_string()),
             ("sort", "relevance".to_string()),
         ];
@@ -113,9 +116,7 @@ impl Engine for Core {
                 .map(|values| {
                     values
                         .iter()
-                        .filter_map(|j| {
-                            j.get("title").and_then(|t| t.as_str()).map(str::to_string)
-                        })
+                        .filter_map(|j| j.get("title").and_then(|t| t.as_str()).map(str::to_string))
                         .collect::<Vec<_>>()
                         .join(", ")
                 })
@@ -171,8 +172,13 @@ mod tests {
            "journals":[{"title":"Journal A"}]}
         ]}"#;
         let response = EngineResponse::new(200, BASE_URL, body.as_bytes().to_vec());
-        let engine = Core::from_config(&EngineConfig::new("core.ac.uk", "core", "core", &["science"]))
-            .unwrap();
+        let engine = Core::from_config(&EngineConfig::new(
+            "core.ac.uk",
+            "core",
+            "core",
+            &["science"],
+        ))
+        .unwrap();
         let items = engine
             .parse(
                 &response,

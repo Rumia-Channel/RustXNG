@@ -1,4 +1,3 @@
-
 //! Alpine Linux engine, ported from `searx/engines/alpinelinux.py`.
 // engine-id: alpinelinux
 
@@ -42,7 +41,10 @@ impl AlpineLinux {
     }
 
     fn arch_in(&self, query: &str) -> Option<String> {
-        ARCHES.iter().find(|arch| query.contains(**arch)).map(|s| s.to_string())
+        ARCHES
+            .iter()
+            .find(|arch| query.contains(**arch))
+            .map(|s| s.to_string())
     }
 }
 
@@ -62,13 +64,15 @@ impl Engine for AlpineLinux {
         };
         let arch = query_arch.unwrap_or_else(|| "x86_64".to_string());
         // Upstream keeps the "*" wildcards and the arch literal as-is.
-        let url = format!(
-            "{base}/packages?name=*{query}*&page={pageno}&arch={arch}"
-        );
+        let url = format!("{base}/packages?name=*{query}*&page={pageno}&arch={arch}");
         Ok(EngineRequest::get(url))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let html = parse_html(&response.text());
         let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL);
         let mut results = Vec::new();
@@ -137,18 +141,40 @@ mod tests {
           </tr>
           <tr><td>No item found</td></tr>
         </tbody></table>"#;
-        let response = EngineResponse::new(200, "https://pkgs.alpinelinux.org/", html.as_bytes().to_vec());
-        let engine = AlpineLinux::from_config(&EngineConfig::new("alpinelinux", "alpinelinux", "apk", &["packages", "it"])).unwrap();
+        let response = EngineResponse::new(
+            200,
+            "https://pkgs.alpinelinux.org/",
+            html.as_bytes().to_vec(),
+        );
+        let engine = AlpineLinux::from_config(&EngineConfig::new(
+            "alpinelinux",
+            "alpinelinux",
+            "apk",
+            &["packages", "it"],
+        ))
+        .unwrap();
         let query = Query::parse("foo x86_64", &crate::engine::EngineRegistry::default(), &[]);
         let items = engine.parse(&response, &query).unwrap();
         assert_eq!(items.len(), 1);
-        assert!(matches!(&items[0], EngineItem::Result(r) if r.title == "foo" && r.metadata.contains_key("version")));
+        assert!(
+            matches!(&items[0], EngineItem::Result(r) if r.title == "foo" && r.metadata.contains_key("version"))
+        );
     }
 
     #[test]
     fn builds_the_url_with_arch_in_query() {
-        let engine = AlpineLinux::from_config(&EngineConfig::new("alpinelinux", "alpinelinux", "apk", &["packages", "it"])).unwrap();
-        let query = Query::parse("bar aarch64", &crate::engine::EngineRegistry::default(), &[]);
+        let engine = AlpineLinux::from_config(&EngineConfig::new(
+            "alpinelinux",
+            "alpinelinux",
+            "apk",
+            &["packages", "it"],
+        ))
+        .unwrap();
+        let query = Query::parse(
+            "bar aarch64",
+            &crate::engine::EngineRegistry::default(),
+            &[],
+        );
         let request = engine.build_request(&query, 1).unwrap();
         assert!(request.url.contains("name=*bar*"));
         assert!(request.url.contains("arch=aarch64"));

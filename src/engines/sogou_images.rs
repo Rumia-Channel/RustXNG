@@ -12,8 +12,14 @@ use crate::results::Template;
 use crate::settings::EngineConfig;
 
 const DEFAULTS: EngineDefaults = EngineDefaults {
-    categories: &["images"], shortcut: "sogoui", paging: true, time_range_support: false,
-    safesearch: false, language_support: false, weight: 1.0, timeout: 4.0,
+    categories: &["images"],
+    shortcut: "sogoui",
+    paging: true,
+    time_range_support: false,
+    safesearch: false,
+    language_support: false,
+    weight: 1.0,
+    timeout: 4.0,
 };
 
 const BASE_URL: &str = "https://pic.sogou.com";
@@ -40,19 +46,32 @@ impl Engine for SogouImages {
         let base = self.meta.base_url.as_deref().unwrap_or(BASE_URL);
         let start = pageno.saturating_sub(1) * 48;
         let pairs = vec![("query", query.query_text()), ("start", start.to_string())];
-        Ok(EngineRequest::get(format!("{}/pics?{}", base.trim_end_matches('/'), query_string(&pairs))))
+        Ok(EngineRequest::get(format!(
+            "{}/pics?{}",
+            base.trim_end_matches('/'),
+            query_string(&pairs)
+        )))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let body = response.text();
         let pattern = regex::Regex::new(STATE_RE)
             .map_err(|error| EngineError::Parse(format!("invalid state pattern: {error}")))?;
-        let Some(captures) = pattern.captures(&body) else { return Ok(Vec::new()) };
-        let Some(payload) = captures.get(1) else { return Ok(Vec::new()) };
+        let Some(captures) = pattern.captures(&body) else {
+            return Ok(Vec::new());
+        };
+        let Some(payload) = captures.get(1) else {
+            return Ok(Vec::new());
+        };
         let Ok(json) = serde_json::from_str::<serde_json::Value>(payload.as_str()) else {
             return Ok(Vec::new());
         };
-        let Some(items) = json_path(&json, "searchList.searchList").and_then(|value| value.as_array())
+        let Some(items) =
+            json_path(&json, "searchList.searchList").and_then(|value| value.as_array())
         else {
             return Ok(Vec::new());
         };
@@ -85,7 +104,13 @@ fn is_http_url(url: &str) -> bool {
 mod tests {
     use super::*;
     fn engine() -> Arc<SogouImages> {
-        SogouImages::from_config(&EngineConfig::new("sogou images", "sogou_images", "sogoui", &["images"])).unwrap()
+        SogouImages::from_config(&EngineConfig::new(
+            "sogou images",
+            "sogou_images",
+            "sogoui",
+            &["images"],
+        ))
+        .unwrap()
     }
 
     #[test]
@@ -101,9 +126,18 @@ mod tests {
                 assert_eq!(result.title, "Cat photo");
                 assert_eq!(result.content, "A cat");
                 assert_eq!(result.template, Template::Images);
-                assert_eq!(result.thumbnail.as_deref(), Some("https://img.example.com/cat.jpg"));
-                assert_eq!(result.img_src.as_deref(), Some("https://img.example.com/cat.jpg"));
-                assert_eq!(result.metadata.get("source").map(String::as_str), Some("example.com"));
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://img.example.com/cat.jpg")
+                );
+                assert_eq!(
+                    result.img_src.as_deref(),
+                    Some("https://img.example.com/cat.jpg")
+                );
+                assert_eq!(
+                    result.metadata.get("source").map(String::as_str),
+                    Some("example.com")
+                );
             }
             _ => panic!("expected an image result"),
         }

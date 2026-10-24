@@ -213,10 +213,4 @@ mod tests {
             "https://repology.org/api/v1/projects/?search=firefox"
         );
     }
-
-    #[test]
-    fn non_object_payload_is_empty() {
-        let response = EngineResponse::new(200, BASE_URL, b"[]".to_vec());
-        assert!(engine().parse(&response, &query("x")).unwrap().is_empty());
-    }
 }

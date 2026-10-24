@@ -39,7 +39,11 @@ impl Flaticon {
 
     /// The base URL without its trailing slash.
     fn base(&self) -> String {
-        let base = self.meta.base_url.clone().unwrap_or_else(|| BASE_URL.to_string());
+        let base = self
+            .meta
+            .base_url
+            .clone()
+            .unwrap_or_else(|| BASE_URL.to_string());
         base.trim_end_matches('/').to_string()
     }
 }
@@ -53,7 +57,11 @@ impl Engine for Flaticon {
         let text = query.query_text();
         let base = self.base();
         let pairs: Vec<(&str, String)> = vec![("word", text.clone())];
-        let url = format!("{base}/ajax/search/{}?{}", pageno.max(1), query_string(&pairs));
+        let url = format!(
+            "{base}/ajax/search/{}?{}",
+            pageno.max(1),
+            query_string(&pairs)
+        );
         let referer = format!("{base}/search?word={}", encode(&text));
         Ok(EngineRequest::get(url)
             .header("Referer", &referer)
@@ -143,9 +151,18 @@ mod tests {
                 assert_eq!(result.title, "Cat");
                 assert_eq!(result.content, "animal, pet");
                 assert_eq!(result.author.as_deref(), Some("Example Team"));
-                assert_eq!(result.img_src.as_deref(), Some("https://cdn.example.com/cat512.png"));
-                assert_eq!(result.thumbnail.as_deref(), Some("https://cdn.example.com/cat.png"));
-                assert_eq!(result.metadata.get("img_format").map(String::as_str), Some("PNG"));
+                assert_eq!(
+                    result.img_src.as_deref(),
+                    Some("https://cdn.example.com/cat512.png")
+                );
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://cdn.example.com/cat.png")
+                );
+                assert_eq!(
+                    result.metadata.get("img_format").map(String::as_str),
+                    Some("PNG")
+                );
                 assert_eq!(result.template, Template::Images);
             }
             _ => panic!("expected an icon result"),
@@ -156,8 +173,14 @@ mod tests {
     fn builds_the_ajax_request() {
         let query = Query::parse("cat", &crate::engine::EngineRegistry::default(), &[]);
         let request = engine().build_request(&query, 2).unwrap();
-        assert_eq!(request.url, "https://www.flaticon.com/ajax/search/2?word=cat");
-        let referer = request.headers.get("referer").and_then(|value| value.to_str().ok());
+        assert_eq!(
+            request.url,
+            "https://www.flaticon.com/ajax/search/2?word=cat"
+        );
+        let referer = request
+            .headers
+            .get("referer")
+            .and_then(|value| value.to_str().ok());
         assert_eq!(referer, Some("https://www.flaticon.com/search?word=cat"));
     }
 

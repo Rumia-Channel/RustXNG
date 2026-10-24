@@ -27,7 +27,8 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 
 const BASE_URL: &str = "https://api2.marginalia-search.com";
 const RESULTS_PER_PAGE: i64 = 20;
-const USER_AGENT: &str = "Mozilla/5.0 (compatible; rustxng/0.2; +https://github.com/sahenjp/rustxng)";
+const USER_AGENT: &str =
+    "Mozilla/5.0 (compatible; rustxng/0.2; +https://github.com/sahenjp/rustxng)";
 
 /// Marginalia, an independent search engine for the small web.
 pub struct Marginalia {
@@ -37,13 +38,6 @@ pub struct Marginalia {
 impl Marginalia {
     pub fn from_config(config: &EngineConfig) -> Result<Arc<Self>, String> {
         let meta = EngineMeta::from_config(config, DEFAULTS);
-        let key = meta.api_key.as_deref().unwrap_or_default().trim();
-        if key.is_empty() {
-            return Err(
-                "marginalia: missing api_key (see https://about.marginalia-search.com/article/api)"
-                    .to_string(),
-            );
-        }
         Ok(Arc::new(Self { meta }))
     }
 }
@@ -71,8 +65,14 @@ impl Engine for Marginalia {
                 pairs.push(("filter", filter.to_string()));
             }
         }
+        let key = self.meta.api_key.as_deref().unwrap_or_default().trim();
+        if key.is_empty() {
+            return Err(EngineError::Message(
+                "marginalia: an api_key is required (see about.marginalia-search.com)".into(),
+            ));
+        }
         let mut request = EngineRequest::get(format!("{base}/search?{}", query_string(&pairs)));
-        request.set_header("API-Key", self.meta.api_key.as_deref().unwrap_or_default());
+        request.set_header("API-Key", key);
         request.set_header("User-Agent", USER_AGENT);
         Ok(request)
     }
@@ -147,13 +147,20 @@ mod tests {
         let mut request_query = query("rust");
         request_query.safesearch = 2;
         let request = engine().build_request(&request_query, 3).unwrap();
-        assert!(request.url.starts_with("https://api2.marginalia-search.com/search?"));
+        assert!(
+            request
+                .url
+                .starts_with("https://api2.marginalia-search.com/search?")
+        );
         assert!(request.url.contains("page=3"));
         assert!(request.url.contains("count=20"));
         assert!(request.url.contains("nsfw=1"));
         assert!(request.url.contains("query=rust"));
         assert_eq!(
-            request.headers.get("api-key").and_then(|value| value.to_str().ok()),
+            request
+                .headers
+                .get("api-key")
+                .and_then(|value| value.to_str().ok()),
             Some("KEY")
         );
     }
@@ -161,9 +168,18 @@ mod tests {
     #[test]
     fn api_key_is_required_and_empty_bodies_are_ok() {
         let config = EngineConfig::new("marginalia", "marginalia", "mar", &["general"]);
-        assert!(Marginalia::from_config(&config).is_err());
+        let bare = Marginalia::from_config(&config).expect("engine");
+        assert!(matches!(
+            bare.build_request(&query("rust"), 1),
+            Err(EngineError::Message(_))
+        ));
         let response = EngineResponse::new(200, BASE_URL, br##"{"license":"x"}"##.to_vec());
-        assert!(engine().parse(&response, &query("rust")).unwrap().is_empty());
+        assert!(
+            engine()
+                .parse(&response, &query("rust"))
+                .unwrap()
+                .is_empty()
+        );
         let broken = EngineResponse::new(200, BASE_URL, b"not json".to_vec());
         assert!(matches!(
             engine().parse(&broken, &query("rust")),

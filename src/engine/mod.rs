@@ -424,6 +424,10 @@ pub struct EngineRegistry {
     handles: Vec<EngineHandle>,
     by_name: HashMap<String, usize>,
     by_shortcut: HashMap<String, usize>,
+    /// Engines that could not be initialised (missing api key, unreachable
+    /// instance, ...). They are skipped, like upstream does, and reported by
+    /// the stats endpoints.
+    failed: Vec<(String, String)>,
 }
 
 impl EngineRegistry {
@@ -431,7 +435,14 @@ impl EngineRegistry {
     pub fn from_settings(settings: &Settings) -> Result<Self, String> {
         let mut registry = Self::default();
         for config in settings.enabled_engines() {
-            let handle = crate::engines::build(config)?;
+            let handle = match crate::engines::build(config) {
+                Ok(handle) => handle,
+                Err(error) => {
+                    tracing::warn!(engine = %config.name, %error, "engine cannot be initialised, skipped");
+                    registry.failed.push((config.name.clone(), error));
+                    continue;
+                }
+            };
             let index = registry.handles.len();
             registry.by_name.insert(handle.name().to_lowercase(), index);
             if !handle.engine_id().is_empty() {
@@ -482,6 +493,11 @@ impl EngineRegistry {
 
     pub fn iter(&self) -> impl Iterator<Item = &EngineHandle> {
         self.handles.iter()
+    }
+
+    /// Engines that could not be initialised, as (name, reason) pairs.
+    pub fn failed(&self) -> &[(String, String)] {
+        &self.failed
     }
 
     pub fn len(&self) -> usize {
@@ -574,6 +590,10 @@ mod tests {
             "brk",
             &["general"],
         ));
-        assert!(EngineRegistry::from_settings(&settings).is_err());
+        // A broken engine is skipped (like upstream) and reported, the rest
+        // of the registry still builds.
+        let registry = EngineRegistry::from_settings(&settings).expect("registry");
+        assert!(registry.get("broken").is_none());
+        assert!(registry.failed().iter().any(|(name, _)| name == "broken"));
     }
 }

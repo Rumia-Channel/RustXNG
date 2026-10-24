@@ -70,13 +70,18 @@ impl Engine for Gitea {
             ("order", self.order()),
             ("page", pageno.to_string()),
         ];
-        Ok(
-            EngineRequest::get(format!("{base}/api/v1/repos/search?{}", query_string(&pairs)))
-                .header("Accept", "application/json"),
-        )
+        Ok(EngineRequest::get(format!(
+            "{base}/api/v1/repos/search?{}",
+            query_string(&pairs)
+        ))
+        .header("Accept", "application/json"))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
         let Some(items) = json_path(&json, "data").and_then(|value| value.as_array()) else {
             return Ok(Vec::new());
@@ -170,35 +175,70 @@ mod tests {
 
     #[test]
     fn parses_repositories() {
-        let response = EngineResponse::new(200, "https://gitea.example.com/", FIXTURE.as_bytes().to_vec());
+        let response = EngineResponse::new(
+            200,
+            "https://gitea.example.com/",
+            FIXTURE.as_bytes().to_vec(),
+        );
         let query = Query::parse("demo", &crate::engine::EngineRegistry::default(), &[]);
         let items = engine().parse(&response, &query).unwrap();
         assert_eq!(items.len(), 2);
-        let EngineItem::Result(first) = &items[0] else { panic!("expected a result") };
+        let EngineItem::Result(first) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(first.title, "acme/demo");
         assert_eq!(first.url, "https://gitea.example.com/acme/demo");
         assert_eq!(first.content, "Rust / A demo repo");
-        assert_eq!(first.thumbnail.as_deref(), Some("https://gitea.example.com/avatars/demo.png"));
-        assert_eq!(first.published_date.as_deref(), Some("2024-05-06T07:08:09Z"));
+        assert_eq!(
+            first.thumbnail.as_deref(),
+            Some("https://gitea.example.com/avatars/demo.png")
+        );
+        assert_eq!(
+            first.published_date.as_deref(),
+            Some("2024-05-06T07:08:09Z")
+        );
         assert_eq!(first.template, Template::Packages);
         let metadata = &first.metadata;
-        assert_eq!(metadata.get("package_name").map(String::as_str), Some("demo"));
+        assert_eq!(
+            metadata.get("package_name").map(String::as_str),
+            Some("demo")
+        );
         assert_eq!(metadata.get("maintainer").map(String::as_str), Some("acme"));
         assert_eq!(metadata.get("tags").map(String::as_str), Some("rust, cli"));
         assert_eq!(metadata.get("popularity").map(String::as_str), Some("42"));
-        assert_eq!(metadata.get("homepage").map(String::as_str), Some("https://demo.example.com"));
-        assert_eq!(metadata.get("source_code_url").map(String::as_str), Some("https://gitea.example.com/acme/demo.git"));
-        let EngineItem::Result(second) = &items[1] else { panic!("expected a result") };
-        assert_eq!(second.thumbnail.as_deref(), Some("https://gitea.example.com/avatars/acme.png"));
-        assert_eq!(second.published_date.as_deref(), Some("2022-02-02T00:00:00Z"));
+        assert_eq!(
+            metadata.get("homepage").map(String::as_str),
+            Some("https://demo.example.com")
+        );
+        assert_eq!(
+            metadata.get("source_code_url").map(String::as_str),
+            Some("https://gitea.example.com/acme/demo.git")
+        );
+        let EngineItem::Result(second) = &items[1] else {
+            panic!("expected a result")
+        };
+        assert_eq!(
+            second.thumbnail.as_deref(),
+            Some("https://gitea.example.com/avatars/acme.png")
+        );
+        assert_eq!(
+            second.published_date.as_deref(),
+            Some("2022-02-02T00:00:00Z")
+        );
     }
 
     #[test]
     fn builds_the_repository_search_request() {
         let query = Query::parse("demo", &crate::engine::EngineRegistry::default(), &[]);
         let request = engine().build_request(&query, 2).unwrap();
-        assert_eq!(request.url, "https://gitea.example.com/api/v1/repos/search?q=demo&limit=10&sort=updated&order=desc&page=2");
-        assert_eq!(request.headers.get("accept").unwrap().to_str().unwrap(), "application/json");
+        assert_eq!(
+            request.url,
+            "https://gitea.example.com/api/v1/repos/search?q=demo&limit=10&sort=updated&order=desc&page=2"
+        );
+        assert_eq!(
+            request.headers.get("accept").unwrap().to_str().unwrap(),
+            "application/json"
+        );
     }
 
     #[test]

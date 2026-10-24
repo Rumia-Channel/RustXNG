@@ -9,7 +9,9 @@
 use std::sync::Arc;
 
 use crate::engine::util::*;
-use crate::engine::{Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse};
+use crate::engine::{
+    Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse,
+};
 use crate::query::Query;
 use crate::results::Template;
 use crate::settings::EngineConfig;
@@ -82,7 +84,11 @@ impl Engine for DuckDuckGoExtra {
             region
         };
         let lang = locale_language(&query.locale);
-        let lang = if lang.is_empty() || lang == "all" { "en".to_string() } else { lang };
+        let lang = if lang.is_empty() || lang == "all" {
+            "en".to_string()
+        } else {
+            lang
+        };
         let mut pairs = vec![
             ("o", "json".to_string()),
             ("q", text),
@@ -95,7 +101,12 @@ impl Engine for DuckDuckGoExtra {
         let ct = if query.locale.is_empty() || query.locale == "all" {
             "EN".to_string()
         } else {
-            query.locale.split('-').next().unwrap_or("EN").to_uppercase()
+            query
+                .locale
+                .split('-')
+                .next()
+                .unwrap_or("EN")
+                .to_uppercase()
         };
         pairs.push(("ct", ct));
         if pageno > 1 {
@@ -121,12 +132,20 @@ impl Engine for DuckDuckGoExtra {
         request = request.cookie("ad", &lang);
         request = request.cookie("ah", &region);
         request = request.cookie("l", &region);
-        let lang = if query.locale.is_empty() { String::new() } else { lang };
+        let lang = if query.locale.is_empty() {
+            String::new()
+        } else {
+            lang
+        };
         request = request.header("Accept-Language", &lang);
         Ok(request)
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
         let Some(results) = json_path(&json, "results").and_then(|value| value.as_array()) else {
             return Ok(Vec::new());
@@ -215,7 +234,9 @@ mod tests {
           ]
         }"#;
         let mut config = EngineConfig::new("ddg_news", "duckduckgo_extra", "", &["news"]);
-        config.extra.insert("ddg_category".into(), toml::Value::String("news".into()));
+        config
+            .extra
+            .insert("ddg_category".into(), toml::Value::String("news".into()));
         let engine = DuckDuckGoExtra::from_config(&config).unwrap();
         let response = EngineResponse::new(200, BASE_URL, fixture.as_bytes().to_vec());
         let query = Query::parse("rust", &crate::engine::EngineRegistry::default(), &[]);
@@ -241,14 +262,19 @@ mod tests {
           ]
         }"#;
         let mut config = EngineConfig::new("ddg_images", "duckduckgo_extra", "", &["images"]);
-        config.extra.insert("ddg_category".into(), toml::Value::String("images".into()));
+        config
+            .extra
+            .insert("ddg_category".into(), toml::Value::String("images".into()));
         let engine = DuckDuckGoExtra::from_config(&config).unwrap();
         let response = EngineResponse::new(200, BASE_URL, fixture.as_bytes().to_vec());
         let query = Query::parse("rust", &crate::engine::EngineRegistry::default(), &[]);
         let items = engine.parse(&response, &query).unwrap();
         match &items[0] {
             EngineItem::Result(result) => {
-                assert_eq!(result.img_src.as_deref(), Some("https://example.com/logo.png"));
+                assert_eq!(
+                    result.img_src.as_deref(),
+                    Some("https://example.com/logo.png")
+                );
             }
             _ => panic!("expected a result"),
         }
@@ -257,7 +283,9 @@ mod tests {
     #[test]
     fn build_request_uses_the_category_path() {
         let mut config = EngineConfig::new("ddg_images", "duckduckgo_extra", "", &["images"]);
-        config.extra.insert("ddg_category".into(), toml::Value::String("images".into()));
+        config
+            .extra
+            .insert("ddg_category".into(), toml::Value::String("images".into()));
         let engine = DuckDuckGoExtra::from_config(&config).unwrap();
         let query = Query::parse("rust", &crate::engine::EngineRegistry::default(), &[]);
         let request = engine.build_request(&query, 1).unwrap();
@@ -267,7 +295,9 @@ mod tests {
     #[test]
     fn bad_category_is_rejected() {
         let mut config = EngineConfig::new("bad", "duckduckgo_extra", "", &["general"]);
-        config.extra.insert("ddg_category".into(), toml::Value::String("maps".into()));
+        config
+            .extra
+            .insert("ddg_category".into(), toml::Value::String("maps".into()));
         assert!(DuckDuckGoExtra::from_config(&config).is_err());
     }
 }

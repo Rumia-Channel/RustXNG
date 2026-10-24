@@ -44,10 +44,8 @@ impl Engine for CccMedia {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
-        let pairs: Vec<(&str, String)> = vec![
-            ("q", query.query_text()),
-            ("page", pageno.to_string()),
-        ];
+        let pairs: Vec<(&str, String)> =
+            vec![("q", query.query_text()), ("page", pageno.to_string())];
         Ok(EngineRequest::get(format!(
             "{API_URL}?{}",
             query_string(&pairs)

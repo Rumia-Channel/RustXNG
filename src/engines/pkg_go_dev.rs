@@ -65,7 +65,11 @@ impl Engine for PkgGoDev {
         )))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let html = parse_html(&response.text());
         let base = self.base_url();
         let containers = select_elements(&html, "div.SearchResults")?;
@@ -103,7 +107,8 @@ impl Engine for PkgGoDev {
                 .chars()
                 .filter(|character| *character != '(' && *character != ')')
                 .collect();
-            let license = "div[class*='SearchSnippet-infoLabel'] span[data-test-id='snippet-license'] a";
+            let license =
+                "div[class*='SearchSnippet-infoLabel'] span[data-test-id='snippet-license'] a";
             let license_url = attr_of(item, license, "href")
                 .map(|href| {
                     if href.starts_with("http") {
@@ -158,7 +163,13 @@ mod tests {
     </main></body></html>"##;
 
     fn engine() -> Arc<PkgGoDev> {
-        PkgGoDev::from_config(&EngineConfig::new("pkg go dev", "pkg_go_dev", "pgo", &["packages", "it"])).unwrap()
+        PkgGoDev::from_config(&EngineConfig::new(
+            "pkg go dev",
+            "pkg_go_dev",
+            "pgo",
+            &["packages", "it"],
+        ))
+        .unwrap()
     }
 
     #[test]
@@ -167,17 +178,28 @@ mod tests {
         let query = Query::parse("demo", &crate::engine::EngineRegistry::default(), &[]);
         let items = engine().parse(&response, &query).unwrap();
         assert_eq!(items.len(), 1);
-        let EngineItem::Result(result) = &items[0] else { panic!("expected a result") };
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(result.title, "acme/demo");
         assert_eq!(result.url, "https://pkg.go.dev/github.com/acme/demo");
         assert_eq!(result.content, "A demo module for Go");
         assert_eq!(result.published_date.as_deref(), Some("Jan 2, 2024"));
         assert_eq!(result.template, Template::Packages);
         let metadata = &result.metadata;
-        assert_eq!(metadata.get("package_name").map(String::as_str), Some("demo"));
+        assert_eq!(
+            metadata.get("package_name").map(String::as_str),
+            Some("demo")
+        );
         assert_eq!(metadata.get("version").map(String::as_str), Some("v1.2.3"));
-        assert_eq!(metadata.get("popularity").map(String::as_str), Some("1,234"));
-        assert_eq!(metadata.get("license_name").map(String::as_str), Some("MIT"));
+        assert_eq!(
+            metadata.get("popularity").map(String::as_str),
+            Some("1,234")
+        );
+        assert_eq!(
+            metadata.get("license_name").map(String::as_str),
+            Some("MIT")
+        );
         assert_eq!(
             metadata.get("license_url").map(String::as_str),
             Some("https://opensource.org/licenses/MIT")

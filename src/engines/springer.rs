@@ -51,8 +51,10 @@ impl Engine for Springer {
             ("s", ((pageno.max(1) - 1) * PAGE_SIZE).to_string()),
             ("p", PAGE_SIZE.to_string()),
         ];
-        Ok(EngineRequest::get(format!("{base}?{}", query_string(&pairs)))
-            .header("Accept", "application/json"))
+        Ok(
+            EngineRequest::get(format!("{base}?{}", query_string(&pairs)))
+                .header("Accept", "application/json"),
+        )
     }
 
     fn parse(
@@ -65,7 +67,9 @@ impl Engine for Springer {
         // upstream treats that as an empty result, not as an engine failure.
         if response.status == 403
             && json_str(&json, "status").eq_ignore_ascii_case("fail")
-            && json_str(&json, "message").to_lowercase().contains("premium feature")
+            && json_str(&json, "message")
+                .to_lowercase()
+                .contains("premium feature")
         {
             return Ok(Vec::new());
         }
@@ -142,7 +146,13 @@ fn links(record: &serde_json::Value) -> (String, String) {
 fn pages(record: &serde_json::Value) -> String {
     let start = json_str(record, "startingPage");
     let end = json_str(record, "endingPage");
-    if start.is_empty() { end } else if end.is_empty() { start } else { format!("{start}-{end}") }
+    if start.is_empty() {
+        end
+    } else if end.is_empty() {
+        start
+    } else {
+        format!("{start}-{end}")
+    }
 }
 
 fn tags(record: &serde_json::Value) -> String {
@@ -168,18 +178,33 @@ mod tests {
         let response = EngineResponse::new(200, BASE_URL, body.as_bytes().to_vec());
         let config = EngineConfig::new("springer nature", "springer", "springer", &["science"]);
         let query = Query::parse("rust", &crate::engine::EngineRegistry::default(), &[]);
-        let items = Springer::from_config(&config).unwrap().parse(&response, &query).unwrap();
+        let items = Springer::from_config(&config)
+            .unwrap()
+            .parse(&response, &query)
+            .unwrap();
         assert_eq!(items.len(), 1);
-        let EngineItem::Result(result) = &items[0] else { panic!("expected a result") };
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(result.url, "https://example.com/a");
         assert_eq!(result.title, "Rust study");
         assert_eq!(result.content, "An abstract.");
         assert_eq!(result.author.as_deref(), Some("John Doe, Jane Roe"));
-        assert_eq!(result.published_date.as_deref(), Some("2023-05-01T00:00:00"));
+        assert_eq!(
+            result.published_date.as_deref(),
+            Some("2023-05-01T00:00:00")
+        );
         let expected = [
-            ("doi", "10.1/xyz"), ("journal", "Journal"), ("publisher", "Press"),
-            ("type", "article"), ("volume", "5"), ("number", "2"), ("pages", "1-9"),
-            ("issn", "1234-5678"), ("isbn", "978-1"), ("tags", "rust, systems"),
+            ("doi", "10.1/xyz"),
+            ("journal", "Journal"),
+            ("publisher", "Press"),
+            ("type", "article"),
+            ("volume", "5"),
+            ("number", "2"),
+            ("pages", "1-9"),
+            ("issn", "1234-5678"),
+            ("isbn", "978-1"),
+            ("tags", "rust, systems"),
             ("pdf_url", "https://example.com/a.pdf"),
         ];
         for (key, value) in expected {
@@ -195,7 +220,11 @@ mod tests {
         let query = Query::parse("rust lang", &crate::engine::EngineRegistry::default(), &[]);
         let request = engine.build_request(&query, 2).unwrap();
         for part in ["api_key=abc123", "q=rust%20lang", "s=10", "p=10"] {
-            assert!(request.url.contains(part), "missing {part} in {}", request.url);
+            assert!(
+                request.url.contains(part),
+                "missing {part} in {}",
+                request.url
+            );
         }
     }
 }

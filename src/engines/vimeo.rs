@@ -18,9 +18,14 @@ use crate::results::Template;
 use crate::settings::EngineConfig;
 
 const DEFAULTS: EngineDefaults = EngineDefaults {
-    categories: &["videos"], shortcut: "vm", paging: true,
-    time_range_support: false, safesearch: false, language_support: false,
-    weight: 1.0, timeout: 4.0,
+    categories: &["videos"],
+    shortcut: "vm",
+    paging: true,
+    time_range_support: false,
+    safesearch: false,
+    language_support: false,
+    weight: 1.0,
+    timeout: 4.0,
 };
 
 const BASE_URL: &str = "https://api.vimeo.com";
@@ -192,10 +197,22 @@ mod tests {
                 assert_eq!(result.url, "https://vimeo.com/123456");
                 assert_eq!(result.template, Template::Videos);
                 assert_eq!(result.author.as_deref(), Some("Fireship"));
-                assert_eq!(result.thumbnail.as_deref(), Some("https://i.vimeocdn.com/video/123.jpg"));
-                assert_eq!(result.published_date.as_deref(), Some("2024-05-01T12:00:00+00:00"));
-                assert_eq!(result.metadata.get("length").map(String::as_str), Some("02:05"));
-                assert_eq!(result.metadata.get("iframe_src").map(String::as_str), Some("https://player.vimeo.com/video/123456"));
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://i.vimeocdn.com/video/123.jpg")
+                );
+                assert_eq!(
+                    result.published_date.as_deref(),
+                    Some("2024-05-01T12:00:00+00:00")
+                );
+                assert_eq!(
+                    result.metadata.get("length").map(String::as_str),
+                    Some("02:05")
+                );
+                assert_eq!(
+                    result.metadata.get("iframe_src").map(String::as_str),
+                    Some("https://player.vimeo.com/video/123456")
+                );
             }
             _ => panic!("expected a result"),
         }
@@ -205,10 +222,27 @@ mod tests {
     fn request_carries_paging_and_the_jwt() {
         let mut config = EngineConfig::new("vimeo", "vimeo", "vm", &["videos"]);
         config.api_key = Some("token123".to_string());
-        let request = Vimeo::from_config(&config).unwrap().build_request(&query(), 2).unwrap();
-        assert_eq!(request.url, "https://api.vimeo.com/search?filter_type=clip&query=rust&page=2&per_page=20");
-        assert_eq!(request.headers.get("authorization").unwrap().to_str().unwrap(), "jwt token123");
-        assert_eq!(request.headers.get("Accept").unwrap().to_str().unwrap(), ACCEPT);
+        let request = Vimeo::from_config(&config)
+            .unwrap()
+            .build_request(&query(), 2)
+            .unwrap();
+        assert_eq!(
+            request.url,
+            "https://api.vimeo.com/search?filter_type=clip&query=rust&page=2&per_page=20"
+        );
+        assert_eq!(
+            request
+                .headers
+                .get("authorization")
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "jwt token123"
+        );
+        assert_eq!(
+            request.headers.get("Accept").unwrap().to_str().unwrap(),
+            ACCEPT
+        );
     }
 
     #[test]

@@ -49,11 +49,16 @@ impl Discourse {
     }
 
     fn api_order(&self) -> String {
-        self.meta.opt_str("api_order").unwrap_or("likes").to_string()
+        self.meta
+            .opt_str("api_order")
+            .unwrap_or("likes")
+            .to_string()
     }
 
     fn search_endpoint(&self) -> &str {
-        self.meta.opt_str("search_endpoint").unwrap_or("/search.json")
+        self.meta
+            .opt_str("search_endpoint")
+            .unwrap_or("/search.json")
     }
 
     fn api_username(&self) -> String {
@@ -98,7 +103,11 @@ impl Engine for Discourse {
         Ok(request)
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
         // Upstream returns empty when either container is missing.
         let Some(topics) = json_path(&json, "topics").and_then(|value| value.as_array()) else {
@@ -143,7 +152,11 @@ impl Engine for Discourse {
             if json_str(topic, "has_accepted_answer") == "true" {
                 metadata.push("answered".to_string());
             } else if comments_int > 1 {
-                metadata.push(if closed { "closed".to_string() } else { "open".to_string() });
+                metadata.push(if closed {
+                    "closed".to_string()
+                } else {
+                    "open".to_string()
+                });
             }
             let mut builder = ResultBuilder::new(url, title)
                 .content(content)
@@ -184,7 +197,11 @@ mod tests {
         let mut config = EngineConfig::new("discourse", "discourse", "", &["social media"]);
         config.base_url = Some("https://forums.example.com/".to_string());
         let engine = Discourse::from_config(&config).unwrap();
-        let response = EngineResponse::new(200, "https://forums.example.com", fixture.as_bytes().to_vec());
+        let response = EngineResponse::new(
+            200,
+            "https://forums.example.com",
+            fixture.as_bytes().to_vec(),
+        );
         let query = Query::parse("rust", &crate::engine::EngineRegistry::default(), &[]);
         let items = engine.parse(&response, &query).unwrap();
         assert_eq!(items.len(), 1);
@@ -221,7 +238,11 @@ mod tests {
         let engine = Discourse::from_config(&config).unwrap();
         let query = Query::parse("rust", &crate::engine::EngineRegistry::default(), &[]);
         let request = engine.build_request(&query, 2).unwrap();
-        assert!(request.url.starts_with("https://forums.example.com/search.json"));
+        assert!(
+            request
+                .url
+                .starts_with("https://forums.example.com/search.json")
+        );
         assert!(request.url.contains("page=1"));
         // the query string is percent-encoded, "order:likes" travels as order%3Alikes
         assert!(request.url.contains("order%3Alikes") || request.url.contains("order:likes"));

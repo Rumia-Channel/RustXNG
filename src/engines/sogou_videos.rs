@@ -12,8 +12,14 @@ use crate::results::Template;
 use crate::settings::EngineConfig;
 
 const DEFAULTS: EngineDefaults = EngineDefaults {
-    categories: &["videos"], shortcut: "sogouv", paging: true, time_range_support: false,
-    safesearch: false, language_support: false, weight: 1.0, timeout: 4.0,
+    categories: &["videos"],
+    shortcut: "sogouv",
+    paging: true,
+    time_range_support: false,
+    safesearch: false,
+    language_support: false,
+    weight: 1.0,
+    timeout: 4.0,
 };
 
 const BASE_URL: &str = "https://v.sogou.com";
@@ -49,7 +55,11 @@ impl Engine for SogouVideos {
         )))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
         let Some(items) = json_path(&json, "data.list").and_then(|value| value.as_array()) else {
             return Ok(Vec::new());
@@ -111,7 +121,13 @@ fn is_http_url(url: &str) -> bool {
 mod tests {
     use super::*;
     fn engine() -> Arc<SogouVideos> {
-        SogouVideos::from_config(&EngineConfig::new("sogou videos", "sogou_videos", "sogouv", &["videos"])).unwrap()
+        SogouVideos::from_config(&EngineConfig::new(
+            "sogou videos",
+            "sogou_videos",
+            "sogouv",
+            &["videos"],
+        ))
+        .unwrap()
     }
 
     #[test]
@@ -127,9 +143,18 @@ mod tests {
                 assert_eq!(result.title, "Alpha video");
                 assert_eq!(result.content, "example.com");
                 assert_eq!(result.template, Template::Videos);
-                assert_eq!(result.published_date.as_deref(), Some("2024-05-06T10:00:00"));
-                assert_eq!(result.metadata.get("length").map(String::as_str), Some("04:10"));
-                assert_eq!(result.thumbnail.as_deref(), Some("http://img.example.com/v.jpg"));
+                assert_eq!(
+                    result.published_date.as_deref(),
+                    Some("2024-05-06T10:00:00")
+                );
+                assert_eq!(
+                    result.metadata.get("length").map(String::as_str),
+                    Some("04:10")
+                );
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("http://img.example.com/v.jpg")
+                );
             }
             _ => panic!("expected a video result"),
         }
@@ -146,7 +171,11 @@ mod tests {
     fn builds_the_paged_url() {
         let query = Query::parse("cat", &crate::engine::EngineRegistry::default(), &[]);
         let request = engine().build_request(&query, 2).unwrap();
-        assert!(request.url.starts_with("https://v.sogou.com/api/video/shortVideoV2?"));
+        assert!(
+            request
+                .url
+                .starts_with("https://v.sogou.com/api/video/shortVideoV2?")
+        );
         assert!(request.url.contains("page=2"));
         assert!(request.url.contains("pagesize=10"));
         assert!(request.url.contains("query=cat"));

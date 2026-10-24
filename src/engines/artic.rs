@@ -141,8 +141,8 @@ mod tests {
            "image_id":"abc123","artist_titles":["Vincent van Gogh"]}
         ]}"#;
         let response = EngineResponse::new(200, SEARCH_API, body.as_bytes().to_vec());
-        let engine = Artic::from_config(&EngineConfig::new("artic", "artic", "arc", &["images"]))
-            .unwrap();
+        let engine =
+            Artic::from_config(&EngineConfig::new("artic", "artic", "arc", &["images"])).unwrap();
         let items = engine
             .parse(
                 &response,

@@ -23,8 +23,7 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 };
 
 const DEFAULT_ASSISTANT: &str = "Keep your answers as short and effective as possible.";
-const DEFAULT_SYSTEM: &str =
-    "You are a self-aware language model who is honest and direct about any question from the user.";
+const DEFAULT_SYSTEM: &str = "You are a self-aware language model who is honest and direct about any question from the user.";
 
 /// Cloudflare Workers AI chat engine. Requires account/gateway/model config.
 pub struct CloudflareAi {
@@ -58,10 +57,12 @@ impl Engine for CloudflareAi {
             .meta
             .opt_str("cf_ai_model_assistant")
             .unwrap_or(DEFAULT_ASSISTANT);
-        let system = self.meta.opt_str("cf_ai_model_system").unwrap_or(DEFAULT_SYSTEM);
-        let url = format!(
-            "https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/workers-ai/{model}"
-        );
+        let system = self
+            .meta
+            .opt_str("cf_ai_model_system")
+            .unwrap_or(DEFAULT_SYSTEM);
+        let url =
+            format!("https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/workers-ai/{model}");
         let body = serde_json::json!({
             "messages": [
                 {"role": "assistant", "content": assistant},
@@ -127,4 +128,3 @@ mod tests {
         assert!(matches!(&items[0], EngineItem::Answer(a) if a == "Hello, world!"));
     }
 }
-

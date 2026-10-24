@@ -56,7 +56,10 @@ impl Engine for Search360 {
                 pairs.push(("adv_t", value.1.to_string()));
             }
         }
-        Ok(EngineRequest::get(format!("{base}/s?{}", query_string(&pairs))))
+        Ok(EngineRequest::get(format!(
+            "{base}/s?{}",
+            query_string(&pairs)
+        )))
     }
 
     fn parse(

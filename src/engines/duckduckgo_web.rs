@@ -9,7 +9,9 @@
 use std::sync::Arc;
 
 use crate::engine::util::*;
-use crate::engine::{Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse};
+use crate::engine::{
+    Engine, EngineDefaults, EngineError, EngineItem, EngineMeta, EngineRequest, EngineResponse,
+};
 use crate::query::Query;
 use crate::settings::EngineConfig;
 
@@ -81,7 +83,11 @@ impl Engine for DuckDuckGoWeb {
         Ok(request)
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let body = response.text();
         // DuckDuckGo sometimes answers with a challenge script instead of JSON.
         if body.contains("let jsa =") {
@@ -104,7 +110,11 @@ impl Engine for DuckDuckGoWeb {
             if title.is_empty() {
                 continue;
             }
-            items.push(ResultBuilder::new(url, title).content(strip_tags(&json_str(result, "a"))).build());
+            items.push(
+                ResultBuilder::new(url, title)
+                    .content(strip_tags(&json_str(result, "a")))
+                    .build(),
+            );
         }
         Ok(items)
     }
@@ -173,7 +183,11 @@ mod tests {
         .unwrap();
         let query = Query::parse("rust", &crate::engine::EngineRegistry::default(), &[]);
         let request = engine.build_request(&query, 1).unwrap();
-        assert!(request.url.starts_with("https://links.duckduckgo.com/d.js?"));
+        assert!(
+            request
+                .url
+                .starts_with("https://links.duckduckgo.com/d.js?")
+        );
         assert!(request.url.contains("o=json"));
     }
 }

@@ -41,7 +41,10 @@ impl GitHubCode {
 
     /// The ghc_auth type: none, personal_access_token or bearer.
     fn auth_type(&self) -> String {
-        self.meta.opt_str("ghc_auth_type").unwrap_or("none").to_lowercase()
+        self.meta
+            .opt_str("ghc_auth_type")
+            .unwrap_or("none")
+            .to_lowercase()
     }
 
     /// Split the returned text matches into plain code lines. Upstream also
@@ -49,14 +52,19 @@ impl GitHubCode {
     fn extract_code(&self, item: &serde_json::Value) -> Vec<String> {
         let strip_whitespace = self.meta.opt_bool("ghc_strip_whitespace").unwrap_or(false);
         let strip_new_lines = self.meta.opt_bool("ghc_strip_new_lines").unwrap_or(true);
-        let separator = self.meta.opt_bool("ghc_insert_block_separator").unwrap_or(false);
+        let separator = self
+            .meta
+            .opt_bool("ghc_insert_block_separator")
+            .unwrap_or(false);
         let mut lines = Vec::new();
         let Some(matches) = item.get("text_matches").and_then(|value| value.as_array()) else {
             return lines;
         };
         let mut first = true;
         for entry in matches {
-            if json_str(entry, "object_type") != "FileContent" || json_str(entry, "property") != "content" {
+            if json_str(entry, "object_type") != "FileContent"
+                || json_str(entry, "property") != "content"
+            {
                 continue;
             }
             let mut fragment = json_str(entry, "fragment");
@@ -84,7 +92,11 @@ impl Engine for GitHubCode {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
-        let base = self.meta.base_url.clone().unwrap_or_else(|| BASE_URL.to_string());
+        let base = self
+            .meta
+            .base_url
+            .clone()
+            .unwrap_or_else(|| BASE_URL.to_string());
         let base = base.trim_end_matches('/');
         let url = format!(
             "{base}/search/code?sort=indexed&{}&{}",
@@ -105,7 +117,11 @@ impl Engine for GitHubCode {
         Ok(request)
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         // A malformed search term makes GitHub answer 422; nothing to collect.
         if response.status == 422 {
             return Ok(Vec::new());
@@ -123,7 +139,11 @@ impl Engine for GitHubCode {
             }
             let repository = item.get("repository").cloned().unwrap_or_default();
             let full_name = json_str(&repository, "full_name");
-            let title = if full_name.is_empty() { name } else { format!("{full_name} · {name}") };
+            let title = if full_name.is_empty() {
+                name
+            } else {
+                format!("{full_name} · {name}")
+            };
             let code = self.extract_code(item).join("\n");
             results.push(
                 ResultBuilder::new(url, title)
@@ -172,7 +192,13 @@ mod tests {
     ]}"##;
 
     fn engine() -> Arc<GitHubCode> {
-        GitHubCode::from_config(&EngineConfig::new("github code", "github_code", "ghc", &["code"])).unwrap()
+        GitHubCode::from_config(&EngineConfig::new(
+            "github code",
+            "github_code",
+            "ghc",
+            &["code"],
+        ))
+        .unwrap()
     }
 
     #[test]
@@ -181,11 +207,19 @@ mod tests {
         let query = Query::parse("run", &crate::engine::EngineRegistry::default(), &[]);
         let items = engine().parse(&response, &query).unwrap();
         assert_eq!(items.len(), 1);
-        let EngineItem::Result(result) = &items[0] else { panic!("expected a result") };
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(result.title, "acme/demo · main.rs");
-        assert_eq!(result.url, "https://github.com/acme/demo/blob/main/src/main.rs");
+        assert_eq!(
+            result.url,
+            "https://github.com/acme/demo/blob/main/src/main.rs"
+        );
         assert_eq!(result.content, "A tiny demo repository");
-        assert_eq!(result.metadata.get("filename").map(String::as_str), Some("src/main.rs"));
+        assert_eq!(
+            result.metadata.get("filename").map(String::as_str),
+            Some("src/main.rs")
+        );
         assert_eq!(
             result.metadata.get("code").map(String::as_str),
             Some("fn main() {\n    run();\n}")
@@ -201,18 +235,45 @@ mod tests {
             "https://api.github.com/search/code?sort=indexed&q=run&page=2"
         );
         let headers = &request.headers;
-        assert_eq!(headers.get("accept").unwrap().to_str().unwrap(), ACCEPT_HEADER);
-        assert_eq!(headers.get("x-github-api-version").unwrap().to_str().unwrap(), API_VERSION);
-        assert_eq!(headers.get("authorization").unwrap().to_str().unwrap(), "placeholder");
+        assert_eq!(
+            headers.get("accept").unwrap().to_str().unwrap(),
+            ACCEPT_HEADER
+        );
+        assert_eq!(
+            headers
+                .get("x-github-api-version")
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            API_VERSION
+        );
+        assert_eq!(
+            headers.get("authorization").unwrap().to_str().unwrap(),
+            "placeholder"
+        );
     }
 
     #[test]
     fn bearer_auth_sends_the_token() {
         let mut config = EngineConfig::new("github code", "github_code", "ghc", &["code"]);
         config.api_key = Some("secret".to_string());
-        config.extra.insert("ghc_auth_type".to_string(), toml::Value::String("bearer".to_string()));
+        config.extra.insert(
+            "ghc_auth_type".to_string(),
+            toml::Value::String("bearer".to_string()),
+        );
         let query = Query::parse("run", &crate::engine::EngineRegistry::default(), &[]);
-        let request = GitHubCode::from_config(&config).unwrap().build_request(&query, 1).unwrap();
-        assert_eq!(request.headers.get("authorization").unwrap().to_str().unwrap(), "Bearer secret");
+        let request = GitHubCode::from_config(&config)
+            .unwrap()
+            .build_request(&query, 1)
+            .unwrap();
+        assert_eq!(
+            request
+                .headers
+                .get("authorization")
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "Bearer secret"
+        );
     }
 }

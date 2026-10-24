@@ -63,9 +63,11 @@ impl Engine for Emojipedia {
             let Some(href) = attr(anchor, "href") else {
                 continue;
             };
-            let url = absolute_url(&href, base).unwrap_or_default();
+            let Some(url) = absolute_url(&href, base) else {
+                continue;
+            };
             let title = text(anchor);
-            if url.is_empty() || title.is_empty() {
+            if !(url.starts_with("http://") || url.starts_with("https://")) || title.is_empty() {
                 continue;
             }
             results.push(ResultBuilder::new(url, title).build());

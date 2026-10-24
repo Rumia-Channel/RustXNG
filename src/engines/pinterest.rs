@@ -38,7 +38,11 @@ impl Pinterest {
 
     /// The base URL without its trailing slash.
     fn base(&self) -> String {
-        let base = self.meta.base_url.clone().unwrap_or_else(|| BASE_URL.to_string());
+        let base = self
+            .meta
+            .base_url
+            .clone()
+            .unwrap_or_else(|| BASE_URL.to_string());
         base.trim_end_matches('/').to_string()
     }
 }
@@ -51,9 +55,14 @@ impl Engine for Pinterest {
     fn build_request(&self, query: &Query, _pageno: u32) -> Result<EngineRequest, EngineError> {
         let bookmark = self.meta.opt_str("bookmark").unwrap_or_default();
         let text = query.query_text();
-        let args = serde_json::json!({"options": {"query": text, "bookmarks": [bookmark]}, "context": {}});
+        let args =
+            serde_json::json!({"options": {"query": text, "bookmarks": [bookmark]}, "context": {}});
         let data = serde_json::to_string(&args).unwrap_or_default();
-        let url = format!("{}/resource/BaseSearchResource/get/?data={}", self.base(), encode(&data));
+        let url = format!(
+            "{}/resource/BaseSearchResource/get/?data={}",
+            self.base(),
+            encode(&data)
+        );
         Ok(EngineRequest::get(url)
             .header("X-Requested-With", "XMLHttpRequest")
             .header("X-Pinterest-AppState", "active")
@@ -67,8 +76,8 @@ impl Engine for Pinterest {
         _query: &Query,
     ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
-        let Some(results) = json_path(&json, "resource_response.data.results")
-            .and_then(|value| value.as_array())
+        let Some(results) =
+            json_path(&json, "resource_response.data.results").and_then(|value| value.as_array())
         else {
             return Ok(Vec::new());
         };
@@ -102,7 +111,11 @@ impl Engine for Pinterest {
             let height = json_str(images, "orig.height");
             let username = json_str(result, "pinner.username");
             let full_name = json_str(result, "pinner.full_name");
-            let author = if username.is_empty() { full_name } else { format!("{full_name} ({username})") };
+            let author = if username.is_empty() {
+                full_name
+            } else {
+                format!("{full_name} ({username})")
+            };
             let mut builder = ResultBuilder::new(url, title)
                 .content(json_str(result, "rich_summary.display_description"))
                 .image(img_src)
@@ -125,7 +138,10 @@ impl Engine for Pinterest {
         // data back, so only a configured bookmark can be requested again.
         let bookmark = json_str(&json, "resource_response.bookmark");
         if !bookmark.is_empty() {
-            items.push(EngineItem::EngineData { key: "bookmark".to_string(), value: bookmark });
+            items.push(EngineItem::EngineData {
+                key: "bookmark".to_string(),
+                value: bookmark,
+            });
         }
         Ok(items)
     }
@@ -140,8 +156,16 @@ fn pin_title(result: &serde_json::Value) -> String {
     if title.chars().count() < 5 {
         let annotation = json_str(result, "pin_join.visual_annotation.0");
         let name = json_str(result, "name");
-        let fallback = if name.is_empty() { json_str(result, "auto_alt_text") } else { name };
-        title = if annotation.is_empty() { fallback } else { annotation };
+        let fallback = if name.is_empty() {
+            json_str(result, "auto_alt_text")
+        } else {
+            name
+        };
+        title = if annotation.is_empty() {
+            fallback
+        } else {
+            annotation
+        };
     }
     title
 }
@@ -165,8 +189,13 @@ mod tests {
       ]}}}"##;
 
     fn engine() -> Arc<Pinterest> {
-        Pinterest::from_config(&EngineConfig::new("pinterest", "pinterest", "pin", &["images"]))
-            .unwrap()
+        Pinterest::from_config(&EngineConfig::new(
+            "pinterest",
+            "pinterest",
+            "pin",
+            &["images"],
+        ))
+        .unwrap()
     }
 
     #[test]
@@ -180,11 +209,23 @@ mod tests {
                 assert_eq!(result.url, "https://example.com/pin-page");
                 assert_eq!(result.title, "Cozy reading corner");
                 assert_eq!(result.content, "A reading corner");
-                assert_eq!(result.img_src.as_deref(), Some("https://i.pinimg.com/orig.jpg"));
-                assert_eq!(result.thumbnail.as_deref(), Some("https://i.pinimg.com/236x.jpg"));
+                assert_eq!(
+                    result.img_src.as_deref(),
+                    Some("https://i.pinimg.com/orig.jpg")
+                );
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://i.pinimg.com/236x.jpg")
+                );
                 assert_eq!(result.author.as_deref(), Some("Jane Doe (janedoe)"));
-                assert_eq!(result.metadata.get("resolution").map(String::as_str), Some("1200x800"));
-                assert_eq!(result.metadata.get("source").map(String::as_str), Some("Example"));
+                assert_eq!(
+                    result.metadata.get("resolution").map(String::as_str),
+                    Some("1200x800")
+                );
+                assert_eq!(
+                    result.metadata.get("source").map(String::as_str),
+                    Some("Example")
+                );
                 assert_eq!(result.template, Template::Images);
             }
             _ => panic!("expected an image result"),
@@ -208,7 +249,9 @@ mod tests {
         let prefix = "https://www.pinterest.com/resource/BaseSearchResource/get/?data=";
         assert!(request.url.starts_with(prefix));
         let encoded = request.url.trim_start_matches(prefix);
-        let data = percent_encoding::percent_decode_str(encoded).decode_utf8().unwrap();
+        let data = percent_encoding::percent_decode_str(encoded)
+            .decode_utf8()
+            .unwrap();
         let args: serde_json::Value = serde_json::from_str(&data).unwrap();
         assert_eq!(args["options"]["query"], "cozy");
         assert_eq!(args["options"]["bookmarks"][0], "");

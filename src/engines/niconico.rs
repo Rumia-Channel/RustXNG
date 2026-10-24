@@ -12,9 +12,14 @@ use crate::results::Template;
 use crate::settings::EngineConfig;
 
 const DEFAULTS: EngineDefaults = EngineDefaults {
-    categories: &["videos"], shortcut: "nico", paging: true,
-    time_range_support: true, safesearch: false, language_support: false,
-    weight: 1.0, timeout: 4.0,
+    categories: &["videos"],
+    shortcut: "nico",
+    paging: true,
+    time_range_support: true,
+    safesearch: false,
+    language_support: false,
+    weight: 1.0,
+    timeout: 4.0,
 };
 
 const BASE_URL: &str = "https://www.nicovideo.jp";
@@ -95,7 +100,9 @@ impl Engine for Niconico {
             if let Some(length) = length(&text_of(item, "span.videoLength").unwrap_or_default()) {
                 builder = builder.metadata("length", length);
             }
-            if let Some(date) = published_date(&text_of(item, "p.itemTime span.time").unwrap_or_default()) {
+            if let Some(date) =
+                published_date(&text_of(item, "p.itemTime span.time").unwrap_or_default())
+            {
                 builder = builder.published_date(date);
             }
             let thumbnail = attr_of(item, "img.thumb", "src").unwrap_or_default();
@@ -157,7 +164,13 @@ mod tests {
     </ul></body></html>"##;
 
     fn engine() -> Arc<Niconico> {
-        Niconico::from_config(&EngineConfig::new("niconico", "niconico", "nico", &["videos"])).unwrap()
+        Niconico::from_config(&EngineConfig::new(
+            "niconico",
+            "niconico",
+            "nico",
+            &["videos"],
+        ))
+        .unwrap()
     }
 
     fn query() -> Query {
@@ -175,10 +188,22 @@ mod tests {
                 assert_eq!(result.url, "https://www.nicovideo.jp/watch/sm12345");
                 assert_eq!(result.template, Template::Videos);
                 assert_eq!(result.content, "A description");
-                assert_eq!(result.thumbnail.as_deref(), Some("https://nicovideo.cdn.nimg.jp/thumb/sm12345"));
-                assert_eq!(result.published_date.as_deref(), Some("2024-05-01T12:30:00"));
-                assert_eq!(result.metadata.get("length").map(String::as_str), Some("05:30"));
-                assert_eq!(result.metadata.get("iframe_src").map(String::as_str), Some("https://embed.nicovideo.jp/watch/sm12345"));
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://nicovideo.cdn.nimg.jp/thumb/sm12345")
+                );
+                assert_eq!(
+                    result.published_date.as_deref(),
+                    Some("2024-05-01T12:30:00")
+                );
+                assert_eq!(
+                    result.metadata.get("length").map(String::as_str),
+                    Some("05:30")
+                );
+                assert_eq!(
+                    result.metadata.get("iframe_src").map(String::as_str),
+                    Some("https://embed.nicovideo.jp/watch/sm12345")
+                );
             }
             _ => panic!("expected a result"),
         }
@@ -197,6 +222,10 @@ mod tests {
         let mut query = query();
         query.time_range = Some(TimeRange::Month);
         let request = engine().build_request(&query, 1).unwrap();
-        assert!(request.url.starts_with("https://www.nicovideo.jp/search/rust?page=1&start="));
+        assert!(
+            request
+                .url
+                .starts_with("https://www.nicovideo.jp/search/rust?page=1&start=")
+        );
     }
 }

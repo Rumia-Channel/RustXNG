@@ -12,9 +12,14 @@ use crate::results::Template;
 use crate::settings::EngineConfig;
 
 const DEFAULTS: EngineDefaults = EngineDefaults {
-    categories: &["videos"], shortcut: "iq", paging: true,
-    time_range_support: true, safesearch: false, language_support: false,
-    weight: 1.0, timeout: 4.0,
+    categories: &["videos"],
+    shortcut: "iq",
+    paging: true,
+    time_range_support: true,
+    safesearch: false,
+    language_support: false,
+    weight: 1.0,
+    timeout: 4.0,
 };
 
 const BASE_URL: &str = "https://mesh.if.iqiyi.com";
@@ -33,7 +38,11 @@ impl Iqiyi {
     }
 
     fn endpoint(&self) -> String {
-        let base = self.meta.base_url.clone().unwrap_or_else(|| BASE_URL.to_string());
+        let base = self
+            .meta
+            .base_url
+            .clone()
+            .unwrap_or_else(|| BASE_URL.to_string());
         base.trim_end_matches('/').to_string()
     }
 }
@@ -105,7 +114,8 @@ fn video_result(video: &serde_json::Value, album: &serde_json::Value) -> Option<
     if title.is_empty() || !http {
         return None;
     }
-    let mut builder = ResultBuilder::new(url, title).template(Template::Videos)
+    let mut builder = ResultBuilder::new(url, title)
+        .template(Template::Videos)
         .content(json_str(album, "brief.value"))
         .published_date(published_date(&json_str(album, "releaseTime.value")))
         .metadata("length", length(video));
@@ -126,7 +136,11 @@ fn length(video: &serde_json::Value) -> String {
 
 fn format_duration(seconds: i64) -> String {
     let (hours, minutes, seconds) = (seconds / 3600, (seconds % 3600) / 60, seconds % 60);
-    if hours > 0 { format!("{hours:02}:{minutes:02}:{seconds:02}") } else { format!("{minutes:02}:{seconds:02}") }
+    if hours > 0 {
+        format!("{hours:02}:{minutes:02}:{seconds:02}")
+    } else {
+        format!("{minutes:02}:{seconds:02}")
+    }
 }
 
 /// Upstream parses releaseTime.value with datetime.fromisoformat.
@@ -184,14 +198,29 @@ mod tests {
                 assert_eq!(first.url, "https://www.iqiyi.com/v_ep1.html");
                 assert_eq!(first.template, Template::Videos);
                 assert_eq!(first.content, "A drama");
-                assert_eq!(first.thumbnail.as_deref(), Some("https://pic.iqiyi.com/album.jpg"));
-                assert_eq!(first.published_date.as_deref(), Some("2023-05-01T10:00:00+08:00"));
-                assert_eq!(first.metadata.get("length").map(String::as_str), Some("45:00"));
+                assert_eq!(
+                    first.thumbnail.as_deref(),
+                    Some("https://pic.iqiyi.com/album.jpg")
+                );
+                assert_eq!(
+                    first.published_date.as_deref(),
+                    Some("2023-05-01T10:00:00+08:00")
+                );
+                assert_eq!(
+                    first.metadata.get("length").map(String::as_str),
+                    Some("45:00")
+                );
                 assert_eq!(second.title, "Single video");
                 assert_eq!(second.url, "https://www.iqiyi.com/v_single.html");
                 assert_eq!(second.content, "A film");
-                assert_eq!(second.published_date.as_deref(), Some("2024-01-02T00:00:00"));
-                assert_eq!(second.metadata.get("length").map(String::as_str), Some("01:30:00"));
+                assert_eq!(
+                    second.published_date.as_deref(),
+                    Some("2024-01-02T00:00:00")
+                );
+                assert_eq!(
+                    second.metadata.get("length").map(String::as_str),
+                    Some("01:30:00")
+                );
             }
             _ => panic!("expected two results"),
         }
@@ -200,12 +229,27 @@ mod tests {
     #[test]
     fn request_forwards_paging_and_the_date_filter() {
         let request = engine().build_request(&query(), 2).unwrap();
-        assert_eq!(request.url, "https://mesh.if.iqiyi.com/portal/lw/search/homePageV3?key=rust&pageNum=2&pageSize=25");
+        assert_eq!(
+            request.url,
+            "https://mesh.if.iqiyi.com/portal/lw/search/homePageV3?key=rust&pageNum=2&pageSize=25"
+        );
         let mut query = query();
         query.time_range = Some(TimeRange::Week);
-        assert!(engine().build_request(&query, 1).unwrap().url.contains("sitePublishDate=2"));
+        assert!(
+            engine()
+                .build_request(&query, 1)
+                .unwrap()
+                .url
+                .contains("sitePublishDate=2")
+        );
         query.time_range = Some(TimeRange::Year);
-        assert!(!engine().build_request(&query, 1).unwrap().url.contains("sitePublishDate"));
+        assert!(
+            !engine()
+                .build_request(&query, 1)
+                .unwrap()
+                .url
+                .contains("sitePublishDate")
+        );
     }
 
     #[test]
@@ -213,6 +257,9 @@ mod tests {
         let response = EngineResponse::new(200, BASE_URL, b"{\"data\": {}}".to_vec());
         assert!(engine().parse(&response, &query()).unwrap().is_empty());
         let response = EngineResponse::new(200, BASE_URL, b"not json".to_vec());
-        assert!(matches!(engine().parse(&response, &query()), Err(EngineError::Parse(_))));
+        assert!(matches!(
+            engine().parse(&response, &query()),
+            Err(EngineError::Parse(_))
+        ));
     }
 }

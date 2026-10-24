@@ -77,9 +77,11 @@ impl Engine for BraveApi {
             .to_string(),
         ));
         let key = self.meta.api_key.as_deref().unwrap_or_default();
-        Ok(EngineRequest::get(format!("{BASE_URL}?{}", query_string(&pairs)))
-            .header("X-Subscription-Token", key)
-            .header("Accept", "application/json"))
+        Ok(
+            EngineRequest::get(format!("{BASE_URL}?{}", query_string(&pairs)))
+                .header("X-Subscription-Token", key)
+                .header("Accept", "application/json"),
+        )
     }
 
     fn parse(
@@ -166,4 +168,3 @@ mod tests {
         assert!(request.url.contains("time_range=past_week"));
     }
 }
-

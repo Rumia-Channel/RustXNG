@@ -25,15 +25,15 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 
 /// Regions with a dedicated Yahoo domain (upstream region2domain).
 const REGIONS: &[&str] = &[
-    "AR", "AT", "AU", "BE", "BR", "CA", "CH", "CL", "CO", "DE", "DK", "ES", "FI", "FR", "GB",
-    "GR", "ID", "IE", "IN", "IT", "MX", "MY", "NL", "NO", "NZ", "PE", "PH", "PL", "RO", "SE",
-    "SG", "TH", "TR", "UK", "US", "VE", "VN", "ZA",
+    "AR", "AT", "AU", "BE", "BR", "CA", "CH", "CL", "CO", "DE", "DK", "ES", "FI", "FR", "GB", "GR",
+    "ID", "IE", "IN", "IT", "MX", "MY", "NL", "NO", "NZ", "PE", "PH", "PL", "RO", "SE", "SG", "TH",
+    "TR", "UK", "US", "VE", "VN", "ZA",
 ];
 
 /// Languages accepted by Yahoo in the sB cookie (zh is spelled zh_chs).
 const LANGS: &[&str] = &[
-    "ar", "bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", "he", "hr", "hu", "it",
-    "ja", "ko", "lt", "lv", "nl", "no", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "th", "tr",
+    "ar", "bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", "he", "hr", "hu", "it", "ja",
+    "ko", "lt", "lv", "nl", "no", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "th", "tr",
 ];
 
 /// Yahoo web search.
@@ -61,8 +61,12 @@ fn domain(region: &str) -> String {
 
 /// Remove the Yahoo tracking part of a redirect URL (upstream parse_url).
 fn parse_url(raw: &str) -> String {
-    let Some(marker) = raw.find("/RU=") else { return raw.to_string() };
-    let Some(offset) = raw[marker + 1..].find("http") else { return raw.to_string() };
+    let Some(marker) = raw.find("/RU=") else {
+        return raw.to_string();
+    };
+    let Some(offset) = raw[marker + 1..].find("http") else {
+        return raw.to_string();
+    };
     let start = marker + 1 + offset;
     let mut end: Option<usize> = None;
     for ending in ["/RS", "/RK"] {
@@ -70,7 +74,9 @@ fn parse_url(raw: &str) -> String {
             end = Some(end.map_or(position, |current| current.min(position)));
         }
     }
-    let Some(end) = end else { return raw.to_string() };
+    let Some(end) = end else {
+        return raw.to_string();
+    };
     if end <= start {
         return raw.to_string();
     }
@@ -117,7 +123,11 @@ impl Engine for Yahoo {
         };
         let sb = format!("v=1&vm={safe}&fl=1&vl=lang_{language}&pn=10&rw=new&userset=1");
         let region = locale_region(&query.locale).to_uppercase();
-        let url = format!("https://{}/search?{}", domain(&region), query_string(&pairs));
+        let url = format!(
+            "https://{}/search?{}",
+            domain(&region),
+            query_string(&pairs)
+        );
         Ok(EngineRequest::get(url).cookie("sB", &sb))
     }
 
@@ -129,14 +139,20 @@ impl Engine for Yahoo {
         let html = parse_html(&response.text());
         let mut items = Vec::new();
         for element in select_elements(&html, "div[class*='algo-sr']")? {
-            let Some(href) = attr_of(element, "div[class*='compTitle'] a", "href") else { continue };
+            let Some(href) = attr_of(element, "div[class*='compTitle'] a", "href") else {
+                continue;
+            };
             let url = parse_url(&href);
-            if url.is_empty() || !url.starts_with("http") { continue; }
+            if url.is_empty() || !url.starts_with("http") {
+                continue;
+            }
             let title = attr_of(element, "h3 a", "aria-label")
                 .or_else(|| text_of(element, "a h3"))
                 .map(|value| strip_tags(&value))
                 .unwrap_or_default();
-            if title.is_empty() { continue; }
+            if title.is_empty() {
+                continue;
+            }
             let content = text_of(element, "div[class*='compText']")
                 .map(|value| strip_tags(&value))
                 .unwrap_or_default();
@@ -144,7 +160,9 @@ impl Engine for Yahoo {
         }
         for element in select_elements(&html, "div[class*='AlsoTry'] table a")? {
             let suggestion = strip_tags(&text(element));
-            if !suggestion.is_empty() { items.push(EngineItem::Suggestion(suggestion)); }
+            if !suggestion.is_empty() {
+                items.push(EngineItem::Suggestion(suggestion));
+            }
         }
         Ok(items)
     }
@@ -156,7 +174,8 @@ mod tests {
     use crate::engine::EngineRegistry;
 
     fn engine() -> Arc<Yahoo> {
-        Yahoo::from_config(&EngineConfig::new("yahoo", "yahoo", "yh", &["general"])).expect("engine")
+        Yahoo::from_config(&EngineConfig::new("yahoo", "yahoo", "yh", &["general"]))
+            .expect("engine")
     }
 
     fn query(raw: &str) -> Query {
@@ -171,7 +190,8 @@ mod tests {
           <div class="compText">A language empowering everyone.</div>
         </div>
         <div class="AlsoTry"><table><tr><td><a>rust async</a></td></tr></table></div></body></html>"##;
-        let response = EngineResponse::new(200, "https://search.yahoo.com/", html.as_bytes().to_vec());
+        let response =
+            EngineResponse::new(200, "https://search.yahoo.com/", html.as_bytes().to_vec());
         let items = engine().parse(&response, &query("rust")).unwrap();
         assert_eq!(items.len(), 2);
         match &items[0] {
@@ -205,7 +225,11 @@ mod tests {
         let mut german = query("rust");
         german.locale = "de-DE".to_string();
         let request = engine().build_request(&german, 1).unwrap();
-        assert!(request.url.starts_with("https://de.search.yahoo.com/search?"));
+        assert!(
+            request
+                .url
+                .starts_with("https://de.search.yahoo.com/search?")
+        );
     }
 
     #[test]
@@ -213,7 +237,8 @@ mod tests {
         let wrapped = "https://r.search.yahoo.com/_ylt=a/RU=https%3A%2F%2Fexample.com%2F/RK=2/RS=b";
         assert_eq!(parse_url(wrapped), "https://example.com/");
         assert_eq!(parse_url("https://example.com/"), "https://example.com/");
-        let empty = EngineResponse::new(200, "https://search.yahoo.com/", b"<html></html>".to_vec());
+        let empty =
+            EngineResponse::new(200, "https://search.yahoo.com/", b"<html></html>".to_vec());
         assert!(engine().parse(&empty, &query("rust")).unwrap().is_empty());
     }
 }

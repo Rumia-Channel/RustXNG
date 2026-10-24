@@ -62,10 +62,7 @@ impl Engine for GitLab {
     }
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
-        let pairs = vec![
-            ("search", query.query_text()),
-            ("page", pageno.to_string()),
-        ];
+        let pairs = vec![("search", query.query_text()), ("page", pageno.to_string())];
         Ok(EngineRequest::get(format!(
             "{}/{}?{}",
             self.base_url(),
@@ -75,7 +72,11 @@ impl Engine for GitLab {
         .header("Accept", "application/json"))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
         let Some(items) = json.as_array() else {
             return Ok(Vec::new());
@@ -155,27 +156,50 @@ mod tests {
         let query = Query::parse("demo", &crate::engine::EngineRegistry::default(), &[]);
         let items = engine().parse(&response, &query).unwrap();
         assert_eq!(items.len(), 1);
-        let EngineItem::Result(result) = &items[0] else { panic!("expected a result") };
+        let EngineItem::Result(result) = &items[0] else {
+            panic!("expected a result")
+        };
         assert_eq!(result.title, "demo");
         assert_eq!(result.url, "https://gitlab.example.com/group/demo");
         assert_eq!(result.content, "A demo project");
-        assert_eq!(result.published_date.as_deref(), Some("2024-02-03T04:05:06Z"));
+        assert_eq!(
+            result.published_date.as_deref(),
+            Some("2024-02-03T04:05:06Z")
+        );
         assert_eq!(result.template, Template::Packages);
-        assert_eq!(result.thumbnail.as_deref(), Some("https://gitlab.example.com/avatar.png"));
+        assert_eq!(
+            result.thumbnail.as_deref(),
+            Some("https://gitlab.example.com/avatar.png")
+        );
         let metadata = &result.metadata;
-        assert_eq!(metadata.get("package_name").map(String::as_str), Some("demo"));
-        assert_eq!(metadata.get("maintainer").map(String::as_str), Some("Group"));
+        assert_eq!(
+            metadata.get("package_name").map(String::as_str),
+            Some("demo")
+        );
+        assert_eq!(
+            metadata.get("maintainer").map(String::as_str),
+            Some("Group")
+        );
         assert_eq!(metadata.get("popularity").map(String::as_str), Some("42"));
         assert_eq!(metadata.get("tags").map(String::as_str), Some("rust, cli"));
-        assert_eq!(metadata.get("source_code_url").map(String::as_str), Some("https://gitlab.example.com/group/demo.git"));
+        assert_eq!(
+            metadata.get("source_code_url").map(String::as_str),
+            Some("https://gitlab.example.com/group/demo.git")
+        );
     }
 
     #[test]
     fn builds_the_projects_api_request() {
         let query = Query::parse("demo", &crate::engine::EngineRegistry::default(), &[]);
         let request = engine().build_request(&query, 2).unwrap();
-        assert_eq!(request.url, "https://gitlab.example.com/api/v4/projects?search=demo&page=2");
-        assert_eq!(request.headers.get("accept").unwrap().to_str().unwrap(), "application/json");
+        assert_eq!(
+            request.url,
+            "https://gitlab.example.com/api/v4/projects?search=demo&page=2"
+        );
+        assert_eq!(
+            request.headers.get("accept").unwrap().to_str().unwrap(),
+            "application/json"
+        );
     }
 
     #[test]

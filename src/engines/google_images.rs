@@ -29,7 +29,8 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
 const BASE_URL: &str = "https://www.google.com/wml/search";
 const THUMBNAIL_URL: &str = "https://encrypted-tbn0.gstatic.com/images?q=tbn:";
 /// The mobile endpoint only serves images to old handsets (google.py).
-const USER_AGENT: &str = "Nokia7610/2.0 (5.0509.0) SymbianOS/7.0s Series60/2.1 Profile/MIDP-2.0 Configuration/CLDC-1.0";
+const USER_AGENT: &str =
+    "Nokia7610/2.0 (5.0509.0) SymbianOS/7.0s Series60/2.1 Profile/MIDP-2.0 Configuration/CLDC-1.0";
 
 /// Google Images.
 pub struct GoogleImages {
@@ -51,10 +52,8 @@ impl Engine for GoogleImages {
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
         let language = locale_language(&query.locale);
-        let mut pairs: Vec<(&str, String)> = vec![
-            ("q", query.query_text()),
-            ("sca_esv", "1".to_string()),
-        ];
+        let mut pairs: Vec<(&str, String)> =
+            vec![("q", query.query_text()), ("sca_esv", "1".to_string())];
         // google_request(use_locales=False) drops the lr and cr parameters.
         if language != "all" {
             pairs.push(("hl", language.clone()));
@@ -162,7 +161,10 @@ fn host_of(raw: &str) -> String {
     let Some((_, rest)) = raw.split_once("://") else {
         return String::new();
     };
-    rest.split(['/', '?', '#']).next().unwrap_or_default().to_string()
+    rest.split(['/', '?', '#'])
+        .next()
+        .unwrap_or_default()
+        .to_string()
 }
 
 #[cfg(test)]
@@ -189,7 +191,10 @@ mod tests {
             EngineItem::Result(result) => {
                 assert_eq!(result.url, "https://example.com/animals");
                 assert_eq!(result.title, "cat.jpg");
-                assert_eq!(result.img_src.as_deref(), Some("https://example.com/photos/cat.jpg"));
+                assert_eq!(
+                    result.img_src.as_deref(),
+                    Some("https://example.com/photos/cat.jpg")
+                );
                 let thumbnail = "https://encrypted-tbn0.gstatic.com/images?q=tbn:tb42";
                 assert_eq!(result.thumbnail.as_deref(), Some(thumbnail));
                 let resolution = result.metadata.get("resolution").map(String::as_str);
@@ -207,13 +212,20 @@ mod tests {
         query.time_range = Some(TimeRange::Week);
         query.safesearch = 2;
         let request = engine().build_request(&query, 2).unwrap();
-        assert!(request.url.starts_with("https://www.google.com/wml/search?q=cat"));
+        assert!(
+            request
+                .url
+                .starts_with("https://www.google.com/wml/search?q=cat")
+        );
         assert!(request.url.contains("hl=ja"));
         assert!(request.url.contains("tbm=isch"));
         assert!(request.url.contains("start=10"));
         assert!(request.url.contains("tbs=qdr%3Aw"));
         assert!(request.url.contains("safe=active"));
-        let accept = request.headers.get("accept").and_then(|value| value.to_str().ok());
+        let accept = request
+            .headers
+            .get("accept")
+            .and_then(|value| value.to_str().ok());
         assert_eq!(accept, Some("*/*"));
     }
 }

@@ -84,7 +84,8 @@ impl Engine for BingVideos {
         let mut results = Vec::new();
         for element in select_elements(&html, "div[id*='mc_vtvc_video']")? {
             // The metadata is a JSON document inside the vrhm attribute.
-            let Some(metadata) = attr_of(element, "div.vrhdata", "vrhm").map(|value| clean(&value)) else {
+            let Some(metadata) = attr_of(element, "div.vrhdata", "vrhm").map(|value| clean(&value))
+            else {
                 continue;
             };
             if metadata.is_empty() {
@@ -102,8 +103,12 @@ impl Engine for BingVideos {
             let info = text_of(element, "div.mc_vtvc_meta_block span")
                 .unwrap_or_default()
                 .replace("  -  ", " - ");
-            let thumbnail = attr_of(element, "img[class^='rms'], img[class*='rms']", "data-src-hq")
-                .unwrap_or_default();
+            let thumbnail = attr_of(
+                element,
+                "img[class^='rms'], img[class*='rms']",
+                "data-src-hq",
+            )
+            .unwrap_or_default();
             let mut builder = ResultBuilder::new(url, title)
                 .content(info)
                 .template(Template::Videos);
@@ -171,8 +176,10 @@ mod tests {
         query.time_range = Some(TimeRange::Day);
         let request = engine.build_request(&query, 1).unwrap();
         assert!(request.url.contains("form=VRFLTR"));
-        assert!(request
-            .url
-            .contains(&format!("qft=filterui%3Avideoage-lt{}", 60 * 24)));
+        assert!(
+            request
+                .url
+                .contains(&format!("qft=filterui%3Avideoage-lt{}", 60 * 24))
+        );
     }
 }

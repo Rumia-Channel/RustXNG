@@ -159,7 +159,8 @@ mod tests {
             <li>A small domesticated mammal.</li>
           </ul>
         </div>"##;
-        let response = EngineResponse::new(200, "https://www.wordnik.com", html.as_bytes().to_vec());
+        let response =
+            EngineResponse::new(200, "https://www.wordnik.com", html.as_bytes().to_vec());
         let items = engine().parse(&response, &query("cat")).unwrap();
         assert_eq!(items.len(), 1);
         match &items[0] {
@@ -178,7 +179,8 @@ mod tests {
     #[test]
     fn a_page_without_definitions_is_empty() {
         let html = r##"<html><body><p>No entry.</p></body></html>"##;
-        let response = EngineResponse::new(200, "https://www.wordnik.com", html.as_bytes().to_vec());
+        let response =
+            EngineResponse::new(200, "https://www.wordnik.com", html.as_bytes().to_vec());
         assert!(engine().parse(&response, &query("cat")).unwrap().is_empty());
     }
 }

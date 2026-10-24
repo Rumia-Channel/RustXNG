@@ -1,4 +1,3 @@
-
 //! Anna's Archive engine, ported from `searx/engines/annas_archive.py`.
 // engine-id: annas_archive
 
@@ -67,15 +66,24 @@ impl Engine for AnnasArchive {
         }
         pairs.push(("q", query.query_text()));
         pairs.push(("page", pageno.to_string()));
-        Ok(EngineRequest::get(format!("{base}/search?{}", query_string(&pairs))))
+        Ok(EngineRequest::get(format!(
+            "{base}/search?{}",
+            query_string(&pairs)
+        )))
     }
 
-    fn parse(&self, response: &EngineResponse, _query: &Query) -> Result<Vec<EngineItem>, EngineError> {
+    fn parse(
+        &self,
+        response: &EngineResponse,
+        _query: &Query,
+    ) -> Result<Vec<EngineItem>, EngineError> {
         let html = parse_html(&response.text());
         let base = self.meta.base_url.as_deref().unwrap_or_default();
         let mut results = Vec::new();
         for item in select_elements(&html, "main div.js-aarecord-list-outer div.flex")? {
-            let Some(href) = attr_of(item, "a", "href") else { continue };
+            let Some(href) = attr_of(item, "a", "href") else {
+                continue;
+            };
             let title = text_of(item, "span.js-vim-focus")
                 .or_else(|| text_of(item, "a.js-vim-focus"))
                 .or_else(|| text_of(item, "a"))
@@ -89,7 +97,11 @@ impl Engine for AnnasArchive {
                 builder = builder.content(content);
             }
             if let Some(thumb) = attr_of(item, "img", "src") {
-                let thumb = if thumb.starts_with("http") { thumb } else { format!("{base}{thumb}") };
+                let thumb = if thumb.starts_with("http") {
+                    thumb
+                } else {
+                    format!("{base}{thumb}")
+                };
                 builder = builder.thumbnail(thumb);
             }
             results.push(builder.build());
@@ -104,7 +116,8 @@ mod tests {
     use crate::settings::EngineConfig;
 
     fn config() -> EngineConfig {
-        let mut config = EngineConfig::new("annas_archive", "annas_archive", "aab", &["files", "books"]);
+        let mut config =
+            EngineConfig::new("annas_archive", "annas_archive", "aab", &["files", "books"]);
         config.base_url = Some("https://annas-archive.gl".to_string());
         config
     }
@@ -127,7 +140,8 @@ mod tests {
             </div>
           </div>
         </main></html>"#;
-        let response = EngineResponse::new(200, "https://annas-archive.gl/", html.as_bytes().to_vec());
+        let response =
+            EngineResponse::new(200, "https://annas-archive.gl/", html.as_bytes().to_vec());
         let engine = AnnasArchive::from_config(&config()).unwrap();
         let query = Query::parse("book", &crate::engine::EngineRegistry::default(), &[]);
         let items = engine.parse(&response, &query).unwrap();
@@ -137,7 +151,10 @@ mod tests {
                 assert_eq!(result.url, "https://annas-archive.gl/md5/abc");
                 assert_eq!(result.title, "Book Title");
                 assert_eq!(result.content, "A description");
-                assert_eq!(result.thumbnail.as_deref(), Some("https://annas-archive.gl/cover.jpg"));
+                assert_eq!(
+                    result.thumbnail.as_deref(),
+                    Some("https://annas-archive.gl/cover.jpg")
+                );
             }
             _ => panic!("expected a result"),
         }
