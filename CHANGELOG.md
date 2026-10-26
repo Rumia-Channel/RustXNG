@@ -28,7 +28,6 @@ SearXNG との精度比較で見つかった差分を修正したリリースで
 - 精度比較レポート [docs/ACCURACY.md](docs/ACCURACY.md)（overlap@10 / top1 / found の実測と再現手順）
 - `bench/compare.py` に `--delay` オプション（レート制限回避）
 
-
 ## [0.4.0] - 2026-10-24
 
 前回の「未移植」項目をすべて埋め、実測でボトルネックを潰したリリースです（後方互換）。

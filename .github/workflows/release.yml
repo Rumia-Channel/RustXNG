@@ -192,7 +192,11 @@ jobs:
           existing="$RUNNER_TEMP/existing"
           mkdir -p "$existing"
           if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/have.txt" 2>/dev/null; then
-            gh release download "$RELEASE_TAG" --dir "$existing" >/dev/null
+            # An existing release may still have no assets (a previous publish
+            # run created it and stopped): gh refuses to download nothing.
+            if [ -s "$RUNNER_TEMP/have.txt" ]; then
+              gh release download "$RELEASE_TAG" --dir "$existing" >/dev/null
+            fi
           else
             : > "$RUNNER_TEMP/have.txt"
           fi
