@@ -98,7 +98,7 @@ SearXNG が標準で用意している **226 種類すべて**を移植済みで
 | メモリ使用量 | 118 MiB | **13 MiB** |
 | 既定エンジン全件（169）の検索 | 1〜3 秒 | **0.27 秒**（ウォーム時・中央値） |
 | 単一サイトの検索 | 100〜400 ms | **1〜50 ms** |
-| 検索結果の一致度 | — | hackernews / arxiv は完全一致、bing は 88% |
+| 検索結果の一致度 | — | 主要 8 エンジン中 6 エンジンで完全一致（overlap@10 = 1.00） |
 
 自分の環境で測る場合:
 
@@ -147,6 +147,7 @@ cargo test          # 735 件、外部ネットワーク不要
 | ドキュメント | 内容 |
 | :--- | :--- |
 | [docs/INTRO.md](docs/INTRO.md) | **AI エージェントに使わせるための紹介**（用途・組み込み例） |
+| [docs/ACCURACY.md](docs/ACCURACY.md) | SearXNG との結果一致度の実測（overlap@10） |
 | [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) | SearXNG とどこが同じでどこが違うか |
 | [docs/COVERAGE.md](docs/COVERAGE.md) | 対応している検索サイトの一覧 |
 | [docs/PORTING.md](docs/PORTING.md) | 内部構造と設定の詳細 |

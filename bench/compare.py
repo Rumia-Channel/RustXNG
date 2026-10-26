@@ -117,6 +117,12 @@ def main() -> int:
     parser.add_argument("--queries", default="bench/queries.txt")
     parser.add_argument("--repeats", type=int, default=2)
     parser.add_argument("--timeout", type=float, default=60.0)
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=0.6,
+        help="seconds to sleep between requests (avoids rate limits)",
+    )
     parser.add_argument("--json", dest="json_path", default=None)
     args = parser.parse_args()
 
@@ -133,7 +139,14 @@ def main() -> int:
     with open(args.queries, encoding="utf-8") as handle:
         queries = [line.strip() for line in handle if line.strip() and not line.startswith("#")]
 
-    report = {"a": args.a, "b": args.b, "engines": {}, "queries": queries, "repeats": args.repeats}
+    report = {
+        "a": args.a,
+        "b": args.b,
+        "engines": {},
+        "queries": queries,
+        "repeats": args.repeats,
+        "delay": args.delay,
+    }
     print(f"comparing A={args.a} (rustxng) with B={args.b} (searxng)")
     print(f"{len(engines)} engines × {len(queries)} queries × {args.repeats} repeats\n")
     print(f"{'engine':<16} {'query':<26} {'A ms':>8} {'B ms':>8} {'A/B':>6} {'A n':>5} {'B n':>5} {'overlap':>8} {'top1':>6}")
@@ -150,7 +163,11 @@ def main() -> int:
         for query in queries:
             for repeat in range(args.repeats):
                 result_a = search(args.a, query, rust_engine, args.timeout)
+                if args.delay:
+                    time.sleep(args.delay)
                 result_b = search(args.b, query, searxng_engine, args.timeout)
+                if args.delay:
+                    time.sleep(args.delay)
                 for name, result in (("A", result_a), ("B", result_b)):
                     if "error" in result:
                         errors.append(f"{name} {engine} {query!r}: {result['error']}")

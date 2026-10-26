@@ -13,6 +13,22 @@
 - CI を Linux・macOS・Windows の matrix に拡張し、clippy `-D warnings`、
   `--no-default-features` ビルド、Docker イメージの `/healthz` 起動確認を追加
 
+## [0.4.1] - 2026-10-26
+
+SearXNG との精度比較で見つかった差分を修正したリリースです。
+
+### Fixed
+
+- **npm**: 検索バックエンドを npm registry から上流と同じ npms.io に変更（一致度 0.01 → 1.00）
+- **stack exchange**: 既定のソートを上流と同じ `activity` に変更（`api_sort` で変更可）、結果 URL を上流と同じ `/q/{id}` 形式に統一（一致度 0.00 → 1.00）
+- **pubmed**: オフラインエンジンの実行経路を使い、上流と同じ 2 リクエスト（esearch → efetch）構成に変更（一致度 0.39 → 1.00）
+
+### Added
+
+- 精度比較レポート [docs/ACCURACY.md](docs/ACCURACY.md)（overlap@10 / top1 / found の実測と再現手順）
+- `bench/compare.py` に `--delay` オプション（レート制限回避）
+
+
 ## [0.4.0] - 2026-10-24
 
 前回の「未移植」項目をすべて埋め、実測でボトルネックを潰したリリースです（後方互換）。

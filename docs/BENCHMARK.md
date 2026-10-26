@@ -49,6 +49,8 @@ cargo run --release --example benchmark -- --repeats 3
 
 ## 結果の一致度
 
+詳しい実測は [ACCURACY.md](ACCURACY.md) にまとめています（主要 8 エンジン中 6 エンジンが overlap@10 = 1.00）。
+
 上流と RustXNG で同じクエリを投げ、上位 10 件の URL の一致率（overlap@10）を測ります。
 
 | エンジン | overlap@10 |

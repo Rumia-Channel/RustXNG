@@ -24,7 +24,7 @@ const DEFAULTS: EngineDefaults = EngineDefaults {
     timeout: 4.0,
 };
 
-const SEARCH_API: &str = "https://registry.npmjs.org/-/v1/search";
+const SEARCH_API: &str = "https://api.npms.io/v2/search";
 
 /// npm package search.
 pub struct Npm {
@@ -46,7 +46,7 @@ impl Engine for Npm {
 
     fn build_request(&self, query: &Query, pageno: u32) -> Result<EngineRequest, EngineError> {
         let pairs: Vec<(&str, String)> = vec![
-            ("text", query.query_text()),
+            ("q", query.query_text()),
             // Upstream (npms.io) pages 25 results at a time.
             ("size", "25".to_string()),
             ("from", ((pageno - 1) * 25).to_string()),
@@ -63,7 +63,7 @@ impl Engine for Npm {
         _query: &Query,
     ) -> Result<Vec<EngineItem>, EngineError> {
         let json = response.json()?;
-        let items = match json_path(&json, "objects").and_then(|value| value.as_array()) {
+        let items = match json_path(&json, "results").and_then(|value| value.as_array()) {
             Some(items) => items,
             None => return Ok(Vec::new()),
         };

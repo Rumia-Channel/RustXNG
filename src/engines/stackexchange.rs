@@ -56,11 +56,14 @@ impl Engine for StackExchange {
             (
                 "sort",
                 if query.time_range.is_some() {
-                    "creation"
+                    "creation".to_string()
                 } else {
-                    "relevance"
-                }
-                .to_string(),
+                    // upstream default api_sort is "activity"
+                    self.meta
+                        .opt_str("api_sort")
+                        .unwrap_or("activity")
+                        .to_string()
+                },
             ),
             ("q", query.query_text()),
             ("site", self.site()),
@@ -95,7 +98,12 @@ impl Engine for StackExchange {
         let mut results = Vec::new();
         for item in items {
             let title = strip_tags(&json_str(item, "title"));
-            let url = json_str(item, "link");
+            // upstream builds the short canonical URL from the question id
+            let question_id = json_str(item, "question_id");
+            let mut url = json_str(item, "link");
+            if !question_id.is_empty() {
+                url = format!("https://{}.com/q/{question_id}", self.site());
+            }
             if title.is_empty() || url.is_empty() {
                 continue;
             }
